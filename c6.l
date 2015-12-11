@@ -1,17 +1,23 @@
 %{
 #include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <iostream>
+#include <map>
+#include <string.h>
 #include "calc3.h"
 #include "y.tab.h"
+using namespace std;
 void yyerror(char *);
+map<string, int> id_list;
+int id_index = 0;
+int get_id();
+
 %}
 
+VAR         [A-Za-z][A-Za-z0-9]{0,11}
+
 %%
-
-[a-z]       { 
-                yylval.sIndex = *yytext-'a';
-                return VARIABLE;
-            }
-
 
 0           {
                 yylval.iValue = atoi(yytext);
@@ -31,24 +37,42 @@ void yyerror(char *);
 "<="            return LE;
 "=="            return EQ;
 "!="            return NE;
-"for"		return FOR;
+"for"		    return FOR;
 "while"         return WHILE;
 "if"            return IF;
 "else"          return ELSE;
 "print"         return PRINT;
-"read"		return READ;
-"&&"		return AND;
-"||"		return OR;
-"do"		return DO;
-"break"		return BREAK;
-"continue"	return CONTINUE;
+"read"		    return READ;
+"&&"		    return AND;
+"||"		    return OR;
+"do"		    return DO;
+"break"		    return BREAK;
+"continue"	    return CONTINUE;
+
+{VAR}      {    
+                yylval.sIndex = get_id();
+                return VARIABLE;
+            }
 
 \/\/.*\n	;	/* skip comments */
 
 [ \t\n]+        ;       /* ignore whitespace */
 
 .           {yyerror("Unknown Variable");}
+
 %%
+
 int yywrap(void) {
     return 1;
+}
+
+int get_id() { // get the id of the variable, if new, assign a new index
+    string name = "";
+    for (int i = 0; i < yyleng; i++) {
+        name += tolower(yytext[i]);
+    }
+    map<string, int>::iterator it = id_list.find(name);
+    if (it == id_list.end())
+        id_list[name] = id_index; id_index++;
+    return id_list[name];
 }

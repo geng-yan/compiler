@@ -103,7 +103,7 @@ nodeType *con(int value) {
 
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(conNodeType);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -119,7 +119,7 @@ nodeType *id(int i) {
 
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -138,7 +138,7 @@ nodeType *opr(int oper, int nops, ...) {
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(oprNodeType) +
         (nops - 1) * sizeof(nodeType*);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
