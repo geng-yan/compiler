@@ -1,178 +1,231 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "calc3.h"
 #include "y.tab.h"
-#include <stdbool.h>
-
+#include <stdlib.h>
+//typedef enum {INTEGER,CHAR,STRING} printype;
 static int lbl;
-
-static int sp;
-
-// Please set "capital" to:
-//  - "true": if the nas instructions are in the form of "compGT"
-//  - "false": if the nas instructions are in the form of "compgt"
-static bool capital = true;
-
-// when set to true, print out the current value of sp
-static bool debug = false;
-
-int find(int i){
-	pair* curr;
-	for(curr = head; curr->next != NULL; curr=curr->next){
-		if (i == curr->name)
-			return curr->pos;
-	}
-	return -1;
-}
-
-pair* getSpace(int name){
-    printf("\tpush\t0\n");
-    pair* newVar = (pair*) malloc(sizeof(pair));
-    newVar->name = name;
-    newVar->pos = sp;
-    sp++;
-    if (debug) printf("\t\t\tsp++: %d\n", sp);
-    newVar->next = head;
-    head = newVar;
-    return head;
-}
-
-// for the compiler, not executing, only generates the (assembly) code
-int ex(nodeType *p, int contTo, int breakTo) {
-    int cond, after, update, lbl1, lbl2;
-    int bf;
-
+static int fpoffset = 0;
+static struct dic *head=NULL;
+int outx=-1,outy=-1;
+int flag = 0;
+//printype typ;
+struct dic{
+    char *name;
     int pos;
-
+    struct dic *next;
+};
+struct dic* addVar2Point(char* var)
+{
+    static struct dic *tail = NULL;
+    //printf("---%s---%d\n",var,fpoffset-1);
+    if(head==NULL)
+    {
+        head = (struct dic*)malloc(sizeof(struct dic));
+        head->name = strdup(var);
+        head->pos = fpoffset-1;
+        head->next = NULL;
+        tail = head;
+        return head;
+    }
+    else
+    {
+        struct dic *tmp = (struct dic*)malloc(sizeof(struct dic));
+        tmp->name = strdup(var);
+        tmp->pos = fpoffset-1;
+        tmp->next = NULL;
+        tail->next = tmp;
+        tail = tmp;
+        return tmp;
+    }
+}
+struct dic* findVar(char* var)
+{
+    struct dic *tmp;
+    //printf("222\n");
+    for(tmp = head;tmp!=NULL;tmp=tmp->next)
+    {
+        //printf("111\n");
+        if(strcmp(tmp->name,var)==0)
+        {   
+            //printf("findla\n");
+            flag = 0;
+            return tmp;
+        }
+    }
+    flag = 1;
+    return addVar2Point(var);
+}
+int ex(nodeType *p) {
+    int oldx,oldy,lbl1, lbl2,lbl3;
+    struct dic *tmp;
     if (!p) return 0;
     switch(p->type) {
     case typeCon:
+        //printf("---typeCon---\n");       
         printf("\tpush\t%d\n", p->con.value);
-        sp++;
-        if (debug) printf("\t\t\tsp++: %d\n", sp);
+        ++fpoffset; 
         break;
     case typeId:
-        pos = find(p->id.i);
-		printf("\tpush\tfp[%d]\n", pos);
-        sp++;
-        if (debug) printf("\t\t\tsp++: %d\n", sp);
+        //printf("---typeId:%s---\n",p->id.id);
+        tmp = findVar(p->id.id);        
+        printf("\tpush\tfp[%d]\n", tmp->pos);
+        ++fpoffset;
         break;
     case typeOpr:
+        //printf("---typeOpr---\n");
         switch(p->opr.oper) {
-		case FOR:
-			ex(p->opr.op[0], contTo, breakTo);
-			printf("L%03d:\n", lbl1 = lbl++);
-			ex(p->opr.op[1], contTo, breakTo);
-			printf("\tj0\tL%03d\n", lbl2 = lbl++);
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
-            update = lbl++;
-            ex(p->opr.op[3], update, lbl2);// loop body: 'update' for continue, 'lbl2' for break
-            printf("L%03d:\n", update);
-			ex(p->opr.op[2], contTo, breakTo); // update made in each iteration
-			printf("\tjmp\tL%03d\n", lbl1);
-			printf("L%03d:\n", lbl2);
-			break;
+    case BREAK:
+        if(outy!=-1)
+            printf("\tjmp\tL%03d\n",outy);
+        else
+        {
+            printf("break must be inside a loop.\n");
+            exit(0);
+        }
+        break;
+    case CONTINUE:
+        if(outx!=-1)
+            printf("\tjmp\tL%03d\n",outx);
+        else
+        {
+            printf("continue must be inside a loop.\n");
+            exit(0);
+        }
+        break;
+	case FOR:
+        lbl1 = lbl++;
+        lbl2 = lbl++;
+        lbl3 = lbl++;
+        oldx = outx;
+        oldy = outy;
+        outx = lbl3;
+        outy = lbl2;
+		ex(p->opr.op[0]);
+		printf("L%03d:\n", lbl1);
+		ex(p->opr.op[1]);
+		printf("\tj0\tL%03d\n", lbl2);
+        --fpoffset;
+		ex(p->opr.op[3]);
+        printf("L%03d:\n", lbl3);
+		ex(p->opr.op[2]);
+		printf("\tjmp\tL%03d\n", lbl1);
+		printf("L%03d:\n", lbl2);
+        outx = oldx;
+        outy = oldy;
+		break;
         case WHILE:
-            printf("L%03d:\n", lbl1 = lbl++);
-            ex(p->opr.op[0], contTo, breakTo);
-            printf("\tj0\tL%03d\n", lbl2 = lbl++);
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
-            ex(p->opr.op[1], lbl1, lbl2); // loop body: 'lbl1' for continue, 'lbl2' for break
+            lbl1 = lbl++;
+            lbl2 = lbl++;
+            oldx = outx;
+            oldy = outy;
+            outx = lbl1;
+            outy = lbl2;
+            printf("L%03d:\n", lbl1);
+            ex(p->opr.op[0]);
+            printf("\tj0\tL%03d\n", lbl2);
+            --fpoffset;
+            ex(p->opr.op[1]);
             printf("\tjmp\tL%03d\n", lbl1);
             printf("L%03d:\n", lbl2);
+            outx = oldx;
+            outy = oldy;    
             break;
-		case DO:
-            printf("L%03d:\n", lbl1 = lbl++);
-            cond = lbl++;
-            after = lbl++;
-            ex(p->opr.op[0], cond, after); // loop body: 'cond' for continue, 'after' for break
-            printf("L%03d:\n", cond);
-			ex(p->opr.op[1], contTo, breakTo);
-            printf("\tj1\tL%03d\n", lbl1);
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
-            printf("L%03d:\n", after); // label for break
-            break;
-        case BREAK:
-            printf("\tjmp\tL%03d\n", breakTo);
-            break;
-        case CONTINUE:
-            printf("\tjmp\tL%03d\n", contTo);
+        case DO:
+            lbl1 = lbl++;
+            lbl2 = lbl++;
+            oldx = outx;
+            oldy = outy;
+            outx = lbl1;
+            outy = lbl2;
+            printf("L%03d:\n",lbl1);
+            ex(p->opr.op[0]);
+            ex(p->opr.op[1]);
+            printf("\tj0\tL%03d\n",lbl2);
+            --fpoffset;
+            printf("\tjmp\tL%03d\n",lbl1);
+            printf("L%03d:\n",lbl2);
+            outx = oldx;
+            outy = oldy;
             break;
         case IF:
-            ex(p->opr.op[0], contTo, breakTo);
+            ex(p->opr.op[0]);
             if (p->opr.nops > 2) {
                 /* if else */
                 printf("\tj0\tL%03d\n", lbl1 = lbl++);
-                sp--;
-                if (debug) printf("\t\t\tsp--: %d\n", sp);
-                ex(p->opr.op[1], contTo, breakTo);
+                --fpoffset;
+                ex(p->opr.op[1]);
                 printf("\tjmp\tL%03d\n", lbl2 = lbl++);
                 printf("L%03d:\n", lbl1);
-                ex(p->opr.op[2], contTo, breakTo);
+                ex(p->opr.op[2]);
                 printf("L%03d:\n", lbl2);
             } else {
                 /* if */
                 printf("\tj0\tL%03d\n", lbl1 = lbl++);
-                sp--;
-                if (debug) printf("\t\t\tsp--: %d\n", sp);
-                ex(p->opr.op[1], contTo, breakTo);
+                --fpoffset;
+                ex(p->opr.op[1]);
                 printf("L%03d:\n", lbl1);
             }
             break;
-		case READ:
-            pos = find(p->opr.op[0]->id.i);
-            if (pos == -1){ // new variable
-                getSpace(p->opr.op[0]->id.i);
-                pos = head->pos;
-            }
+	case READ:
+        flag = 0;
+        tmp = findVar(p->opr.op[0]->id.id);
+        if(!flag)
+        {
             printf("\tgeti\n");
-            printf("\tpop\tfp[%d]\n", pos);
-		    break;
+            printf("\tpop\tfp[%d]\n",tmp->pos);
+        }
+        else
+        {
+            printf("\tpush 0\n");
+            ++fpoffset;
+            ++tmp->pos;
+            ex(p->opr.op[0]);
+            printf("\tgeti\n");
+            printf("\tpop\tfp[%d]\n",tmp->pos);
+        }
+	    break;
         case PRINT:     
-            ex(p->opr.op[0], contTo, breakTo);
+            ex(p->opr.op[0]);
+            --fpoffset;
             printf("\tputi\n");
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
             break;
-        case '=':
-            pos = find(p->opr.op[0]->id.i);
-			if (pos == -1){ // new variable
-                head = getSpace(p->opr.op[0]->id.i);
-                pos = head->pos;
+        case '=':       
+            ex(p->opr.op[1]);
+            tmp = findVar(p->opr.op[0]->id.id);
+            if(!flag)
+            {
+                --fpoffset;
+                printf("\tpop\tfp[%d]\n",tmp->pos);
             }
-            ex(p->opr.op[1], contTo, breakTo);
-			printf("\tpop\tfp[%d]\n", pos);
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
+            else
+            {
+                ex(p->opr.op[1]);
+                --fpoffset;
+                printf("\tpop\tfp[%d]\n",tmp->pos);
+            }
             break;
         case UMINUS:    
-            ex(p->opr.op[0], contTo, breakTo);
+            ex(p->opr.op[0]);
             printf("\tneg\n");
-            sp--;
             break;
         default:
-            ex(p->opr.op[0], contTo, breakTo);
-            ex(p->opr.op[1], contTo, breakTo);
-            sp--;
-            if (debug) printf("\t\t\tsp--: %d\n", sp);
+            ex(p->opr.op[0]);
+            ex(p->opr.op[1]);
             switch(p->opr.oper) {
-            case '+':   printf("\tadd\n"); break;
-            case '-':   printf("\tsub\n"); break; 
-            case '*':   printf("\tmul\n"); break;
-            case '/':   printf("\tdiv\n"); break;
-            case '%':   printf("\tmod\n"); break;
-            case '<':   if (capital) printf("\tcompLT\n"); else printf("\tcomplt\n"); break;
-            case '>':   if (capital) printf("\tcompGT\n"); else printf("\tcompgt\n"); break;
-            case GE:    if (capital) printf("\tcompGE\n"); else printf("\tcompge\n"); break;
-            case LE:    if (capital) printf("\tcompLE\n"); else printf("\tcomple\n"); break;
-            case NE:    if (capital) printf("\tcompNE\n"); else printf("\tcompne\n"); break;
-            case EQ:    if (capital) printf("\tcompEQ\n"); else printf("\tcompeq\n"); break;
-    	    case AND:   printf("\tand\n"); break;
-    	    case OR:    printf("\tor\n"); break;
+            case '+':   printf("\tadd\n"); --fpoffset; break;
+            case '-':   printf("\tsub\n"); --fpoffset;break; 
+            case '*':   printf("\tmul\n"); --fpoffset;break;
+            case '/':   printf("\tdiv\n"); --fpoffset;break;
+            case '%':   printf("\tmod\n"); --fpoffset;break;
+            case '<':   printf("\tcomplt\n"); --fpoffset;break;
+            case '>':   printf("\tcompgt\n"); --fpoffset;break;
+            case GE:    printf("\tcompge\n"); --fpoffset;break;
+            case LE:    printf("\tcomple\n"); --fpoffset;break;
+            case NE:    printf("\tcompne\n"); --fpoffset;break;
+            case EQ:    printf("\tcompeq\n"); --fpoffset;break;
+	    case AND:   printf("\tand\n"); --fpoffset;break;
+	    case OR:    printf("\tor\n"); --fpoffset;break;
             }
         }
     }

@@ -1,33 +1,32 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
+#include <stdarg.h>
 #include "calc3.h"
 
 
 /* prototypes */
 nodeType *opr(int oper, int nops, ...);
-nodeType *id(int i);
+nodeType *id(char* var);
 nodeType *con(int value);
 void freeNode(nodeType *p);
-int ex(nodeType *p, int contTo, int breakTo);
+int ex(nodeType *p);
 int yylex(void);
 
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
-pair* head;
 %}
 
 %union {
     int iValue;                 /* integer value */
-    int sIndex;                /* symbol table index */
+    char* sIndex;                /* symbol table index */
     nodeType *nPtr;             /* node pointer */
 };
 
 %token <iValue> INTEGER
 %token <sIndex> VARIABLE
-%token FOR WHILE IF PRINT READ DO CONTINUE BREAK
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -47,27 +46,26 @@ program:
         ;
 
 function:
-          function stmt         { ex($2, -1, -1); freeNode($2); }
-        | /* NULL */            { head = (pair*) malloc (sizeof(pair)); head->next = NULL; }
+          function stmt         { ex($2); freeNode($2); }
+        | /* NULL */
         ;
 
 stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
         | expr ';'                       { $$ = $1; }
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
+        | BREAK ';'                      { $$ = opr(BREAK,0);}
+        | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
 	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
         | VARIABLE '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
 	| FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4,
 $5, $7); }
-		| DO stmt WHILE '(' expr ')' ';'	 { $$ = opr(DO, 2, $2, $5); }
-        | WHILE '(' expr ')' stmt       { $$ = opr(WHILE, 2, $3, $5); }
+        | WHILE '(' expr ')' stmt        { $$ = opr(WHILE, 2, $3, $5); }
+        | DO stmt WHILE '(' expr ')'     { $$ = opr(DO,2,$2,$5); }
         | IF '(' expr ')' stmt %prec IFX { $$ = opr(IF, 2, $3, $5); }
         | IF '(' expr ')' stmt ELSE stmt { $$ = opr(IF, 3, $3, $5, $7); }
         | '{' stmt_list '}'              { $$ = $2; }
-        | BREAK ';'                      { $$ = opr(BREAK, 0); }
-        | CONTINUE ';'                   { $$ = opr(CONTINUE, 0);}
         ;
-
 stmt_list:
           stmt                  { $$ = $1; }
         | stmt_list stmt        { $$ = opr(';', 2, $1, $2); }
@@ -113,7 +111,7 @@ nodeType *con(int value) {
     return p;
 }
 
-nodeType *id(int i) {
+nodeType *id(char* var) {
     nodeType *p;
     size_t nodeSize;
 
@@ -124,7 +122,7 @@ nodeType *id(int i) {
 
     /* copy information */
     p->type = typeId;
-    p->id.i = i;
+    p->id.id = strdup(var);
 
     return p;
 }

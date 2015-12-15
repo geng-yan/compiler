@@ -1,17 +1,28 @@
 %{
 #include <stdlib.h>
+#include <string.h>
 #include "calc3.h"
 #include "y.tab.h"
 void yyerror(char *);
 %}
 
 %%
+"for"       return FOR;
+"do"        return DO;
+"while"         return WHILE;
+"if"            return IF;
+"else"          return ELSE;
+"print"         return PRINT;
+"read"      return READ;
+"continue"  return CONTINUE;
+"break"     return BREAK;
+"&&"        return AND;
+"||"        return OR;
 
-[a-z]       { 
-                yylval.sIndex = *yytext-'a';
+[a-z]+       { 
+                yylval.sIndex = strdup(yytext);
                 return VARIABLE;
             }
-
 
 0           {
                 yylval.iValue = atoi(yytext);
@@ -31,23 +42,13 @@ void yyerror(char *);
 "<="            return LE;
 "=="            return EQ;
 "!="            return NE;
-"for"		return FOR;
-"while"         return WHILE;
-"if"            return IF;
-"else"          return ELSE;
-"print"         return PRINT;
-"read"		return READ;
-"&&"		return AND;
-"||"		return OR;
-"do"		return DO;
-"break"		return BREAK;
-"continue"	return CONTINUE;
+
 
 \/\/.*\n	;	/* skip comments */
 
 [ \t\n]+        ;       /* ignore whitespace */
 
-.           {yyerror("Unknown Variable");}
+.               yyerror("Unknown character");
 %%
 int yywrap(void) {
     return 1;

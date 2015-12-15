@@ -7,7 +7,7 @@ typedef struct {
 
 /* identifiers */
 typedef struct {
-    int i;                     /* subscript to sym array */
+    char* id;                      /* subscript to sym array */
 } idNodeType;
 
 /* operators */
@@ -28,13 +28,3 @@ typedef struct nodeTypeTag {
         oprNodeType opr;        /* operators */
     };
 } nodeType;
-
-extern int sym[26];
-
-typedef struct pair{
-    int pos;
-    int name;
-    struct pair * next;
-} pair;
-
-extern pair* head;
