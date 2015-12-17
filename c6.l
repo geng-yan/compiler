@@ -1,10 +1,15 @@
 %{
 #include <stdlib.h>
+<<<<<<< HEAD
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
 #include <map>
 #include <string.h>
+=======
+#include <string.h>
+#include <stdlib.h>
+>>>>>>> master
 #include "calc3.h"
 #include "y.tab.h"
 using namespace std;
@@ -15,10 +20,31 @@ int get_id();
 
 %}
 
+<<<<<<< HEAD
 VAR         [A-Za-z][A-Za-z0-9]{0,11}
 
 %%
 
+=======
+%%
+"for"       return FOR;
+"do"        return DO;
+"while"         return WHILE;
+"if"            return IF;
+"else"          return ELSE;
+"print"         return PRINT;
+"read"      return READ;
+"continue"  return CONTINUE;
+"break"     return BREAK;
+"&&"        return AND;
+"||"        return OR;
+
+[a-z]+       { 
+                yylval.sIndex = strdup(yytext);
+                return VARIABLE;
+            }
+
+>>>>>>> master
 0           {
                 yylval.iValue = atoi(yytext);
                 return INTEGER;
@@ -37,6 +63,7 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "<="            return LE;
 "=="            return EQ;
 "!="            return NE;
+<<<<<<< HEAD
 "for"		    return FOR;
 "while"         return WHILE;
 "if"            return IF;
@@ -53,13 +80,20 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 yylval.sIndex = get_id();
                 return VARIABLE;
             }
+=======
+
+>>>>>>> master
 
 \/\/.*\n	;	/* skip comments */
 
 [ \t\n]+        ;       /* ignore whitespace */
 
+<<<<<<< HEAD
 .           {yyerror("Unknown Variable");}
 
+=======
+.               yyerror("Unknown character");
+>>>>>>> master
 %%
 
 int yywrap(void) {
