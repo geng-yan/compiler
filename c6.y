@@ -10,10 +10,10 @@
 nodeType *opr(int oper, int nops, ...);
 nodeType *id(char* var);
 nodeType *con(int value);
+nodeType *cha(int value);
 void freeNode(nodeType *p);
 int ex(nodeType *p);
 int yylex(void);
-
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
 %}
@@ -24,7 +24,7 @@ int sym[26];                    /* symbol table */
     nodeType *nPtr;             /* node pointer */
 };
 
-%token <iValue> INTEGER
+%token <iValue> INTEGER CHAR
 %token <sIndex> VARIABLE
 %token FOR WHILE IF PRINT READ DO BREAK CONTINUE
 %nonassoc IFX
@@ -72,8 +72,9 @@ stmt_list:
         ;
 
 expr:
-          INTEGER               { $$ = con($1); }
+          INTEGER               { $$ = con($1);  }
         | VARIABLE              { $$ = id($1); }
+        | CHAR                  { $$ = cha($1);  }
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
         | expr '+' expr         { $$ = opr('+', 2, $1, $3); }
         | expr '-' expr         { $$ = opr('-', 2, $1, $3); }
@@ -106,6 +107,22 @@ nodeType *con(int value) {
 
     /* copy information */
     p->type = typeCon;
+    p->con.value = value;
+
+    return p;
+}
+
+nodeType *cha(int value) {
+    nodeType *p;
+    size_t nodeSize;
+
+    /* allocate node */
+    nodeSize = SIZEOF_NODETYPE + sizeof(conNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeCha;
     p->con.value = value;
 
     return p;

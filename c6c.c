@@ -9,10 +9,13 @@ static int fpoffset = 0;
 static struct dic *head=NULL;
 int outx=-1,outy=-1;
 int flag = 0;
+int ischar = 1;
+extern int yylineno;
 //printype typ;
 struct dic{
     char *name;
     int pos;
+    int ischar;
     struct dic *next;
 };
 struct dic* addVar2Point(char* var)
@@ -24,6 +27,7 @@ struct dic* addVar2Point(char* var)
         head = (struct dic*)malloc(sizeof(struct dic));
         head->name = strdup(var);
         head->pos = fpoffset-1;
+        head->ischar = 0;
         head->next = NULL;
         tail = head;
         return head;
@@ -33,12 +37,14 @@ struct dic* addVar2Point(char* var)
         struct dic *tmp = (struct dic*)malloc(sizeof(struct dic));
         tmp->name = strdup(var);
         tmp->pos = fpoffset-1;
+        tmp->ischar = 0;
         tmp->next = NULL;
         tail->next = tmp;
         tail = tmp;
         return tmp;
     }
 }
+
 struct dic* findVar(char* var)
 {
     struct dic *tmp;
@@ -62,58 +68,66 @@ int ex(nodeType *p) {
     if (!p) return 0;
     switch(p->type) {
     case typeCon:
-        //printf("---typeCon---\n");       
+        // printf("---typeCon---\n");       
         printf("\tpush\t%d\n", p->con.value);
+        ischar = 0;
         ++fpoffset; 
         break;
+    case typeCha:
+        // printf("---typeCha---\n");
+        printf("\tpush\t%d\n", p->cha.value);
+        ischar = 1;
+        ++fpoffset;
+        break;
     case typeId:
-        //printf("---typeId:%s---\n",p->id.id);
+        // printf("---typeId:%s---\n",p->id.id);
         tmp = findVar(p->id.id);        
         printf("\tpush\tfp[%d]\n", tmp->pos);
+        ischar = tmp->ischar;
         ++fpoffset;
         break;
     case typeOpr:
-        //printf("---typeOpr---\n");
+        // printf("---typeOpr---\n");
         switch(p->opr.oper) {
-    case BREAK:
-        if(outy!=-1)
-            printf("\tjmp\tL%03d\n",outy);
-        else
-        {
-            printf("break must be inside a loop.\n");
-            exit(0);
-        }
-        break;
-    case CONTINUE:
-        if(outx!=-1)
-            printf("\tjmp\tL%03d\n",outx);
-        else
-        {
-            printf("continue must be inside a loop.\n");
-            exit(0);
-        }
-        break;
-	case FOR:
-        lbl1 = lbl++;
-        lbl2 = lbl++;
-        lbl3 = lbl++;
-        oldx = outx;
-        oldy = outy;
-        outx = lbl3;
-        outy = lbl2;
-		ex(p->opr.op[0]);
-		printf("L%03d:\n", lbl1);
-		ex(p->opr.op[1]);
-		printf("\tj0\tL%03d\n", lbl2);
-        --fpoffset;
-		ex(p->opr.op[3]);
-        printf("L%03d:\n", lbl3);
-		ex(p->opr.op[2]);
-		printf("\tjmp\tL%03d\n", lbl1);
-		printf("L%03d:\n", lbl2);
-        outx = oldx;
-        outy = oldy;
-		break;
+        case BREAK:
+            if(outy!=-1)
+                printf("\tjmp\tL%03d\n",outy);
+            else
+            {
+                printf("break must be inside a loop.\n");
+                exit(0);
+            }
+            break;
+        case CONTINUE:
+            if(outx!=-1)
+                printf("\tjmp\tL%03d\n",outx);
+            else
+            {
+                printf("continue must be inside a loop.\n");
+                exit(0);
+            }
+            break;
+    	case FOR:
+            lbl1 = lbl++;
+            lbl2 = lbl++;
+            lbl3 = lbl++;
+            oldx = outx;
+            oldy = outy;
+            outx = lbl3;
+            outy = lbl2;
+    		ex(p->opr.op[0]);
+    		printf("L%03d:\n", lbl1);
+    		ex(p->opr.op[1]);
+    		printf("\tj0\tL%03d\n", lbl2);
+            --fpoffset;
+    		ex(p->opr.op[3]);
+            printf("L%03d:\n", lbl3);
+    		ex(p->opr.op[2]);
+    		printf("\tjmp\tL%03d\n", lbl1);
+    		printf("L%03d:\n", lbl2);
+            outx = oldx;
+            outy = oldy;
+    		break;
         case WHILE:
             lbl1 = lbl++;
             lbl2 = lbl++;
@@ -167,28 +181,30 @@ int ex(nodeType *p) {
                 printf("L%03d:\n", lbl1);
             }
             break;
-	case READ:
-        flag = 0;
-        tmp = findVar(p->opr.op[0]->id.id);
-        if(!flag)
-        {
-            printf("\tgeti\n");
-            printf("\tpop\tfp[%d]\n",tmp->pos);
-        }
-        else
-        {
-            printf("\tpush 0\n");
-            ++fpoffset;
-            ++tmp->pos;
-            ex(p->opr.op[0]);
-            printf("\tgeti\n");
-            printf("\tpop\tfp[%d]\n",tmp->pos);
-        }
-	    break;
+    	case READ:
+            flag = 0;
+            tmp = findVar(p->opr.op[0]->id.id);
+            if(!flag)
+            {
+                printf("\tgeti\n");
+                printf("\tpop\tfp[%d]\n",tmp->pos);
+            }
+            else
+            {
+                printf("\tpush 0\n");
+                ++fpoffset;
+                ++tmp->pos;
+                ex(p->opr.op[0]);
+                printf("\tgeti\n");
+                printf("\tpop\tfp[%d]\n",tmp->pos);
+            }
+    	    break;
         case PRINT:     
             ex(p->opr.op[0]);
             --fpoffset;
-            printf("\tputi\n");
+            if (ischar) printf("\tputc\n");
+            else printf("\tputi\n");
+            ischar = 1;
             break;
         case '=':       
             ex(p->opr.op[1]);
@@ -196,38 +212,43 @@ int ex(nodeType *p) {
             if(!flag)
             {
                 --fpoffset;
+                if (tmp->ischar != ischar) errormsg(1); //var type changed. 
+                tmp->ischar = ischar; // Disable and exit if type change is not allowed.
                 printf("\tpop\tfp[%d]\n",tmp->pos);
             }
             else
             {
                 ex(p->opr.op[1]);
                 --fpoffset;
+                tmp->ischar = ischar;
                 printf("\tpop\tfp[%d]\n",tmp->pos);
             }
             break;
         case UMINUS:    
             ex(p->opr.op[0]);
+            ischar = 0;
             printf("\tneg\n");
             break;
         default:
-            ex(p->opr.op[0]);
-            ex(p->opr.op[1]);
-            switch(p->opr.oper) {
-            case '+':   printf("\tadd\n"); --fpoffset; break;
-            case '-':   printf("\tsub\n"); --fpoffset;break; 
-            case '*':   printf("\tmul\n"); --fpoffset;break;
-            case '/':   printf("\tdiv\n"); --fpoffset;break;
-            case '%':   printf("\tmod\n"); --fpoffset;break;
-            case '<':   printf("\tcomplt\n"); --fpoffset;break;
-            case '>':   printf("\tcompgt\n"); --fpoffset;break;
-            case GE:    printf("\tcompge\n"); --fpoffset;break;
-            case LE:    printf("\tcomple\n"); --fpoffset;break;
-            case NE:    printf("\tcompne\n"); --fpoffset;break;
-            case EQ:    printf("\tcompeq\n"); --fpoffset;break;
-	    case AND:   printf("\tand\n"); --fpoffset;break;
-	    case OR:    printf("\tor\n"); --fpoffset;break;
+            ex(p->opr.op[0]); int aischar = ischar;
+            ex(p->opr.op[1]); int charopr = ischar || aischar; ischar = 0;
+                switch(p->opr.oper) { 
+                case '+':   printf("\tadd\n"); --fpoffset; break;
+                case '-':   printf("\tsub\n"); --fpoffset; break; 
+                case '*':   printf("\tmul\n"); --fpoffset;break;
+                case '/':   printf("\tdiv\n"); --fpoffset;break;
+                case '%':   printf("\tmod\n"); --fpoffset;break;
+                case '<':   printf("\tcomplt\n"); --fpoffset;break;
+                case '>':   printf("\tcompgt\n"); --fpoffset;break;
+                case GE:    printf("\tcompge\n"); --fpoffset;break;
+                case LE:    printf("\tcomple\n"); --fpoffset;break;
+                case NE:    printf("\tcompne\n"); --fpoffset;break;
+                case EQ:    printf("\tcompeq\n"); --fpoffset;break;
+    	    case AND:   printf("\tand\n"); --fpoffset;break;
+    	    case OR:    printf("\tor\n"); --fpoffset;break;
+                }
             }
-        }
     }
     return 0;
 }
+

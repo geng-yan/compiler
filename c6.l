@@ -1,31 +1,17 @@
 %{
 #include <stdlib.h>
-<<<<<<< HEAD
-#include <stdio.h>
-#include <ctype.h>
-#include <iostream>
-#include <map>
-#include <string.h>
-=======
 #include <string.h>
 #include <stdlib.h>
->>>>>>> master
+#include "ctype.h"
 #include "calc3.h"
 #include "y.tab.h"
-using namespace std;
 void yyerror(char *);
-map<string, int> id_list;
-int id_index = 0;
-int get_id();
-
+char* tolowercase(char *);
 %}
+%option yylineno
 
-<<<<<<< HEAD
 VAR         [A-Za-z][A-Za-z0-9]{0,11}
 
-%%
-
-=======
 %%
 "for"       return FOR;
 "do"        return DO;
@@ -39,12 +25,11 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "&&"        return AND;
 "||"        return OR;
 
-[a-z]+       { 
-                yylval.sIndex = strdup(yytext);
+{VAR}       { 
+                yylval.sIndex = tolowercase(strdup(yytext));
                 return VARIABLE;
             }
 
->>>>>>> master
 0           {
                 yylval.iValue = atoi(yytext);
                 return INTEGER;
@@ -55,6 +40,11 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 return INTEGER;
             }
 
+\'[A-Za-z]\'    {
+                    yylval.iValue = (int)(yytext[1]);
+                    return CHAR;
+                }
+
 [-()<>=+*/;{}.%] {
                 return *yytext;
              }
@@ -63,50 +53,22 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "<="            return LE;
 "=="            return EQ;
 "!="            return NE;
-<<<<<<< HEAD
-"for"		    return FOR;
-"while"         return WHILE;
-"if"            return IF;
-"else"          return ELSE;
-"print"         return PRINT;
-"read"		    return READ;
-"&&"		    return AND;
-"||"		    return OR;
-"do"		    return DO;
-"break"		    return BREAK;
-"continue"	    return CONTINUE;
 
-{VAR}      {    
-                yylval.sIndex = get_id();
-                return VARIABLE;
-            }
-=======
-
->>>>>>> master
 
 \/\/.*\n	;	/* skip comments */
 
 [ \t\n]+        ;       /* ignore whitespace */
 
-<<<<<<< HEAD
-.           {yyerror("Unknown Variable");}
-
-=======
 .               yyerror("Unknown character");
->>>>>>> master
 %%
-
 int yywrap(void) {
     return 1;
 }
 
-int get_id() { // get the id of the variable, if new, assign a new index
-    string name = "";
-    for (int i = 0; i < yyleng; i++) {
-        name += tolower(yytext[i]);
+char* tolowercase(char* s) {
+    int i = 0;
+    for (i = 0; s[i]; i++) {
+        s[i] = tolower(s[i]);
     }
-    map<string, int>::iterator it = id_list.find(name);
-    if (it == id_list.end())
-        id_list[name] = id_index; id_index++;
-    return id_list[name];
+    return s;
 }
