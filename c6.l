@@ -1,10 +1,19 @@
 %{
 #include <stdlib.h>
 #include <string.h>
+<<<<<<< HEAD
+=======
+#include <stdlib.h>
+#include "ctype.h"
+>>>>>>> da39276b324fb1df0cb1bcb280c3fb23e8ddefca
 #include "calc3.h"
 #include "y.tab.h"
 void yyerror(char *);
+char* tolowercase(char *);
 %}
+%option yylineno
+
+VAR         [A-Za-z][A-Za-z0-9]{0,11}
 
 %%
 "for"       return FOR;
@@ -19,10 +28,8 @@ void yyerror(char *);
 "&&"        return AND;
 "||"        return OR;
 
-"array"     return ARRAY;
-
-[a-z]+       { 
-                yylval.sIndex = strdup(yytext);
+{VAR}       { 
+                yylval.sIndex = tolowercase(strdup(yytext));
                 return VARIABLE;
             }
 
@@ -36,7 +43,12 @@ void yyerror(char *);
                 return INTEGER;
             }
 
-[-()<>=+*/\[\];,{}.%] {
+\'[A-Za-z]\'    {
+                    yylval.iValue = (int)(yytext[1]);
+                    return CHAR;
+                }
+
+[-()<>=+*/;{}.%] {
                 return *yytext;
              }
 
@@ -55,4 +67,12 @@ void yyerror(char *);
 %%
 int yywrap(void) {
     return 1;
+}
+
+char* tolowercase(char* s) {
+    int i = 0;
+    for (i = 0; s[i]; i++) {
+        s[i] = tolower(s[i]);
+    }
+    return s;
 }

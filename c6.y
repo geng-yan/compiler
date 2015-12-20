@@ -10,10 +10,10 @@
 nodeType *opr(int oper, int nops, ...);
 nodeType *id(char* var);
 nodeType *con(int value);
+nodeType *cha(int value);
 void freeNode(nodeType *p);
 int ex(nodeType *p);
 int yylex(void);
-
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
 %}
@@ -24,7 +24,7 @@ int sym[26];                    /* symbol table */
     nodeType *nPtr;             /* node pointer */
 };
 
-%token <iValue> INTEGER
+%token <iValue> INTEGER CHAR
 %token <sIndex> VARIABLE
 %token FOR WHILE IF PRINT READ DO BREAK CONTINUE
 %nonassoc IFX
@@ -114,7 +114,7 @@ nodeType *con(int value) {
 
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(conNodeType);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -124,14 +124,34 @@ nodeType *con(int value) {
     return p;
 }
 
+<<<<<<< HEAD
 // added "offset" for array
 nodeType *id(char* name, int offset) {
+=======
+nodeType *cha(int value) {
+    nodeType *p;
+    size_t nodeSize;
+
+    /* allocate node */
+    nodeSize = SIZEOF_NODETYPE + sizeof(conNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeCha;
+    p->con.value = value;
+
+    return p;
+}
+
+nodeType *id(char* var) {
+>>>>>>> da39276b324fb1df0cb1bcb280c3fb23e8ddefca
     nodeType *p;
     size_t nodeSize;
 
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -151,7 +171,7 @@ nodeType *opr(int oper, int nops, ...) {
     /* allocate node */
     nodeSize = SIZEOF_NODETYPE + sizeof(oprNodeType) +
         (nops - 1) * sizeof(nodeType*);
-    if ((p = malloc(nodeSize)) == NULL)
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
         yyerror("out of memory");
 
     /* copy information */
