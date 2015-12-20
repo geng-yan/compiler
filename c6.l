@@ -1,11 +1,7 @@
 %{
 #include <stdlib.h>
 #include <string.h>
-<<<<<<< HEAD
-=======
-#include <stdlib.h>
 #include "ctype.h"
->>>>>>> da39276b324fb1df0cb1bcb280c3fb23e8ddefca
 #include "calc3.h"
 #include "y.tab.h"
 void yyerror(char *);
