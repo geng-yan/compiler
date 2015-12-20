@@ -9,10 +9,13 @@ static int fpoffset = 0;
 static struct dic *head=NULL;
 int outx=-1,outy=-1;
 int flag = 0;
+enum type{INT,ARRAY};
 //printype typ;
 struct dic{
     char *name;
     int pos;
+    type t;
+    int dim;
     struct dic *next;
 };
 struct dic* addVar2Point(char* var)
@@ -25,6 +28,7 @@ struct dic* addVar2Point(char* var)
         head->name = strdup(var);
         head->pos = fpoffset-1;
         head->next = NULL;
+        head->t = INT;
         tail = head;
         return head;
     }
@@ -34,6 +38,7 @@ struct dic* addVar2Point(char* var)
         tmp->name = strdup(var);
         tmp->pos = fpoffset-1;
         tmp->next = NULL;
+        tmp->t = INT;
         tail->next = tmp;
         tail = tmp;
         return tmp;
@@ -167,24 +172,41 @@ int ex(nodeType *p) {
                 printf("L%03d:\n", lbl1);
             }
             break;
-	case READ:
-        flag = 0;
-        tmp = findVar(p->opr.op[0]->id.id);
-        if(!flag)
-        {
-            printf("\tgeti\n");
-            printf("\tpop\tfp[%d]\n",tmp->pos);
-        }
-        else
-        {
-            printf("\tpush 0\n");
-            ++fpoffset;
-            ++tmp->pos;
-            ex(p->opr.op[0]);
-            printf("\tgeti\n");
-            printf("\tpop\tfp[%d]\n",tmp->pos);
-        }
-	    break;
+        case ARRAY:
+            if (p->opr.nops == 2)
+                val = 0; // without initialization
+            else
+                val = p->opr.op[2]; // with initialization
+            name = p->opr.op[0]; // array name
+            dim = p->opr.op[1]; // array dimension
+            tmp = findVar(name);
+            tmp->dim = dim;
+            tmp->t = ARRAY;
+            cnt = dim;
+            while (cnt > 0){
+                // allocate memory for array
+                printf("\tpush\t%d\n", val);
+                ++fpoffset;
+                cnt--;
+            }
+    	case READ:
+            flag = 0;
+            tmp = findVar(p->opr.op[0]->id.id);
+            if(!flag)
+            {
+                printf("\tgeti\n");
+                printf("\tpop\tfp[%d]\n",tmp->pos);
+            }
+            else
+            {
+                printf("\tpush 0\n");
+                ++fpoffset;
+                ++tmp->pos;
+                ex(p->opr.op[0]);
+                printf("\tgeti\n");
+                printf("\tpop\tfp[%d]\n",tmp->pos);
+            }
+    	    break;
         case PRINT:     
             ex(p->opr.op[0]);
             --fpoffset;

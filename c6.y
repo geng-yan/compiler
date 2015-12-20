@@ -56,24 +56,37 @@ stmt:
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
-	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
-        | VARIABLE '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
+	| READ var ';'		 { $$ = opr(READ, 1, id($2)); }
+        | var '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
 	| FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4,
 $5, $7); }
         | WHILE '(' expr ')' stmt        { $$ = opr(WHILE, 2, $3, $5); }
         | DO stmt WHILE '(' expr ')'     { $$ = opr(DO,2,$2,$5); }
         | IF '(' expr ')' stmt %prec IFX { $$ = opr(IF, 2, $3, $5); }
         | IF '(' expr ')' stmt ELSE stmt { $$ = opr(IF, 3, $3, $5, $7); }
-        | '{' stmt_list '}'              { $$ = $2; }
+        | ARRAY array_list ';' { $$ = opr(ARRAY, 2, $2, $4); }
+        | '{' stmt_list '}'             { $$ = $2; }
         ;
 stmt_list:
           stmt                  { $$ = $1; }
         | stmt_list stmt        { $$ = opr(';', 2, $1, $2); }
         ;
 
+array_list:
+        | array_list ',' single_array { $$ = opr(',', 2, $1, $2); }
+        | single_array { $$ = $1; }
+
+single_array:
+        | VARIABLE '[' INTEGER ']' { $$ = opr(ARRAY, 2, $1, $3); }
+        | VARIABLE '[' INTEGER ']' '=' expr { $$ = opr(ARRAY, 3, $1, $3, $6); }
+
+var:
+        | VARIABLE              { $$ = id($1, 0); }
+        | VARIABLE '[' expr ']' { $$ = id($1, $3); }
+
 expr:
           INTEGER               { $$ = con($1); }
-        | VARIABLE              { $$ = id($1); }
+        | var                   { $$ = $1; }
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
         | expr '+' expr         { $$ = opr('+', 2, $1, $3); }
         | expr '-' expr         { $$ = opr('-', 2, $1, $3); }
@@ -111,7 +124,8 @@ nodeType *con(int value) {
     return p;
 }
 
-nodeType *id(char* var) {
+// added "offset" for array
+nodeType *id(char* name, int offset) {
     nodeType *p;
     size_t nodeSize;
 
@@ -122,7 +136,8 @@ nodeType *id(char* var) {
 
     /* copy information */
     p->type = typeId;
-    p->id.id = strdup(var);
+    p->id.id = strdup(name);
+    p->id.offset = offset;
 
     return p;
 }

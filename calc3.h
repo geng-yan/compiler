@@ -8,6 +8,7 @@ typedef struct {
 /* identifiers */
 typedef struct {
     char* id;                      /* subscript to sym array */
+    int offset; // added: for array indexing
 } idNodeType;
 
 /* operators */

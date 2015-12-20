@@ -1,7 +1,6 @@
 %{
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
 #include "calc3.h"
 #include "y.tab.h"
 void yyerror(char *);
@@ -10,15 +9,17 @@ void yyerror(char *);
 %%
 "for"       return FOR;
 "do"        return DO;
-"while"         return WHILE;
-"if"            return IF;
-"else"          return ELSE;
-"print"         return PRINT;
+"while"     return WHILE;
+"if"        return IF;
+"else"      return ELSE;
+"print"     return PRINT;
 "read"      return READ;
 "continue"  return CONTINUE;
 "break"     return BREAK;
 "&&"        return AND;
 "||"        return OR;
+
+"array"     return ARRAY;
 
 [a-z]+       { 
                 yylval.sIndex = strdup(yytext);
@@ -35,9 +36,10 @@ void yyerror(char *);
                 return INTEGER;
             }
 
-[-()<>=+*/;{}.%] {
+[-()<>=+*/\[\];,{}.%] {
                 return *yytext;
              }
+
 
 ">="            return GE;
 "<="            return LE;
