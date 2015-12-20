@@ -212,7 +212,6 @@ int ex(nodeType *p) {
             if(!flag)
             {
                 --fpoffset;
-                if (tmp->ischar != ischar) errormsg(1); //var type changed. 
                 tmp->ischar = ischar; // Disable and exit if type change is not allowed.
                 printf("\tpop\tfp[%d]\n",tmp->pos);
             }
