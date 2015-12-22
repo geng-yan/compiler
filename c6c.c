@@ -17,6 +17,7 @@ int ischar = 1;
 int fnum = 0;
 int outest = 1;
 int isg = 0;
+int canadd = 0;
 int para = 0;
 extern int yylineno;
 //printype typ;
@@ -69,7 +70,6 @@ struct fun* findFun(char* name)
 }
 struct dic* addVar2Point(char* var,struct dic** thead)
 {
-    static struct dic *tail = NULL;
     //printf("---%s---%d\n",var,fpoffset-1);
     if(*thead==NULL)
     {
@@ -78,10 +78,10 @@ struct dic* addVar2Point(char* var,struct dic** thead)
         (*thead)->pos = fpoffset-1;
         (*thead)->ischar = 0;
         (*thead)->next = NULL;
-        tail = (*thead);
         return (*thead);
     }
-    else
+    struct dic *tail = *thead;
+    while(tail->next!=NULL) tail=tail->next;
     {
         struct dic *tmp = (struct dic*)malloc(sizeof(struct dic));
         tmp->name = strdup(var);
@@ -98,35 +98,33 @@ struct dic* findVar(char* var,struct dic* thead)
 {
     struct dic *tmp;
     //printf("222\n");
-    for(tmp = thead;tmp!=NULL;tmp=tmp->next)
-    {
+    if(thead)
+        for(tmp = thead;tmp!=NULL;tmp=tmp->next)
+        {
         //printf("111\n");
-        if(strcmp(tmp->name,var)==0)
-        {   
+            if(strcmp(tmp->name,var)==0)
+            {   
             //printf("findla\n");
-            flag = 0;
-            isg = 0;
-            return tmp;
+                flag = 0;
+                isg = 0;
+                return tmp;
+            }
         }
-    }
-    for(tmp = global;tmp!=NULL;tmp=tmp->next)
-    {
-        if(strcmp(tmp->name,var)==0)
-        {   
-            //printf("findla\n");
-            flag = 0;
-            isg = 1;
-            return tmp;
+    else
+        for(tmp = global;tmp!=NULL;tmp=tmp->next)
+        {
+            if(strcmp(tmp->name,var)==0)
+            {      
+                //printf("findla\n");
+                flag = 0;
+                isg = 1;
+                return tmp;
+            }
         }
-    }
     flag = 1;
-    if(outest){
-        isg = 1;
-        return addVar2Point(var,&global);
-    }
-    else{
-        return addVar2Point(var,&head);
-    }
+    if(outest) isg = 1;
+    else isg = 0;
+    return NULL;
 }
 void parsegeti(nodeType *p)
 {
@@ -271,7 +269,7 @@ int addPara(nodeType *p)
     {
         num+=addPara(p->opr.op[0]);
         if(p->opr.op[1]->type==typeId)
-            findVar(p->opr.op[1]->id.id,head);
+            addVar2Point(p->opr.op[1]->id.id,&head);
         else
         {
             printf("the argument list must be the variables only.\n");
@@ -281,7 +279,7 @@ int addPara(nodeType *p)
     }
     else if(p->type==typeId)
     {
-        findVar(p->id.id,head);
+        addVar2Point(p->id.id,&head);
         ++num;
     }
     else
@@ -316,9 +314,16 @@ int ex(nodeType *p) {
     case typeId:
         // printf("---typeId:%s---\n",p->id.id);
         if(p->id.global)
+        {
             tmp = findVar(p->id.id,NULL);
+        }
         else
             tmp = findVar(p->id.id,head);
+        if(tmp == NULL)
+        {
+            printf("cannot be refer since it does not exist.\n");
+            exit(1);
+        }
         if(!isg)        
             printf("\tpush\tfp[%d]\n", tmp->pos);
         else
@@ -455,6 +460,18 @@ int ex(nodeType *p) {
                 tmp = findVar(p->opr.op[0]->id.id,NULL);
             else
                 tmp = findVar(p->opr.op[0]->id.id,head);
+            if(tmp == NULL)
+            {
+                if(p->opr.op[0]->id.global&&outest==0)
+                {
+                    printf("cannot find that global variable.\n");
+                    exit(1);
+                }
+                else
+                {
+                    tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                }
+            }
             tmp->ischar = 0;
             if(!flag)
             {
@@ -487,6 +504,18 @@ int ex(nodeType *p) {
                 tmp = findVar(p->opr.op[0]->id.id,NULL);
             else
                 tmp = findVar(p->opr.op[0]->id.id,head);
+            if(tmp == NULL)
+            {
+                if(p->opr.op[0]->id.global&&outest==0)
+                {
+                    printf("cannot find that global variable.\n");
+                    exit(1);
+                }
+                else
+                {
+                    tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                }
+            }
             tmp->ischar = 1;
             if(!flag)
             {
@@ -558,6 +587,21 @@ int ex(nodeType *p) {
                 tmp = findVar(p->opr.op[0]->id.id,NULL);
             else
                 tmp = findVar(p->opr.op[0]->id.id,head);
+            if(tmp == NULL)
+            {
+                if(p->opr.op[0]->id.global&&outest==0)
+                {
+                    printf("cannot find that global variable.\n");
+                    exit(1);
+                }
+                else
+                {
+                    if(outest)
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&global);
+                    else
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                }
+            }
             if(!flag)
             {
                 --fpoffset;
@@ -617,11 +661,11 @@ int ex(nodeType *p) {
                 para = 1;
                 while(ptmp->type==typeOpr)
                 {
-                    findVar(ptmp->opr.op[1]->id.id,head);
+                    addVar2Point(ptmp->opr.op[1]->id.id,&head);
                     ptmp = ptmp->opr.op[0];
                     para++;
                 }
-                findVar(ptmp->id.id,head);
+                addVar2Point(ptmp->id.id,&head);
 
                 para = addPara(p->opr.op[1]);
             }
