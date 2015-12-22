@@ -24,11 +24,14 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "break"     return BREAK;
 "&&"        return AND;
 "||"        return OR;
+"array"     return ARRAY;
 
 {VAR}       { 
-                yylval.sIndex = tolowercase(strdup(yytext));
+                yylval.sValue = tolowercase(strdup(yytext));
                 return VARIABLE;
             }
+
+
 
 0           {
                 yylval.iValue = atoi(yytext);
@@ -40,12 +43,19 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 return INTEGER;
             }
 
-\'[A-Za-z]\'    {
+\'[.(\n)]\'    {
                     yylval.iValue = (int)(yytext[1]);
                     return CHAR;
                 }
 
-[-()<>=+*/;{}.%] {
+
+                /* STRING */
+\"[.\n]*\"    {
+                    yylval.sValue = yytext;
+                    return STRING;
+                }
+
+[-()<>=+*/;,\[\]{}.%] {
                 return *yytext;
              }
 

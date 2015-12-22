@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+// #include <vector>
 #include "calc3.h"
-
 
 /* prototypes */
 nodeType *opr(int oper, int nops, ...);
@@ -20,13 +20,13 @@ int sym[26];                    /* symbol table */
 
 %union {
     int iValue;                 /* integer value */
-    char* sIndex;                /* symbol table index */
+    char* sValue;                /* symbol table index & nas string value */
     nodeType *nPtr;             /* node pointer */
 };
 
 %token <iValue> INTEGER CHAR
-%token <sIndex> VARIABLE
-%token FOR WHILE IF PRINT READ DO BREAK CONTINUE
+%token <sValue> VARIABLE STRING
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE ARRAY ACCESS
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -37,8 +37,7 @@ int sym[26];                    /* symbol table */
 %left '*' '/' '%'
 %nonassoc UMINUS
 
-%type <nPtr> stmt expr stmt_list
-
+%type <nPtr> stmt expr stmt_list name_list single dims access
 %%
 
 program:
@@ -58,6 +57,8 @@ stmt:
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
 	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
         | VARIABLE '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
+        | access '=' expr ';'            { $$ = opr('=', 2, $1, $3); }
+        | ARRAY name_list ';'                { $$ = $2; }
 	| FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4,
 $5, $7); }
         | WHILE '(' expr ')' stmt        { $$ = opr(WHILE, 2, $3, $5); }
@@ -66,13 +67,31 @@ $5, $7); }
         | IF '(' expr ')' stmt ELSE stmt { $$ = opr(IF, 3, $3, $5, $7); }
         | '{' stmt_list '}'              { $$ = $2; }
         ;
+
 stmt_list:
           stmt                  { $$ = $1; }
         | stmt_list stmt        { $$ = opr(';', 2, $1, $2); }
         ;
 
+name_list:
+          single                        { $$ = $1; }
+        | name_list ',' single          { $$ = opr(',', 2, $1, $3); }
+
+single:
+          VARIABLE '[' dims ']'     { $$ = opr(ARRAY, 2, id($1), $3); }
+        | VARIABLE '[' dims ']' '=' INTEGER { $$ = opr(ARRAY, 4, id($1), $3, con($6), con(1)); }
+        | VARIABLE '[' dims ']' '=' CHAR    { $$ = opr(ARRAY, 4, id($1), $3, cha($6), con(2)); }
+
+dims:
+          INTEGER                     { $$ = con($1); }
+        | INTEGER ',' dims           { opr(',', 2, con($1), $3); }
+
+access:
+          VARIABLE '[' expr ']' { $$ = opr(ACCESS, 2, id($1), $3); }
+
 expr:
           INTEGER               { $$ = con($1);  }
+        | access                { $$ = $1; }
         | VARIABLE              { $$ = id($1); }
         | CHAR                  { $$ = cha($1);  }
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
@@ -95,6 +114,7 @@ expr:
 %%
 
 #define SIZEOF_NODETYPE ((char *)&p->con - (char *)p)
+
 
 nodeType *con(int value) {
     nodeType *p;
@@ -139,6 +159,23 @@ nodeType *id(char* var) {
 
     /* copy information */
     p->type = typeId;
+    p->id.id = strdup(var);
+
+    return p;
+}
+
+// not used
+nodeType *array(char* var, int offset) {
+    nodeType *p;
+    size_t nodeSize;
+
+    /* allocate node */
+    nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeArray;
     p->id.id = strdup(var);
 
     return p;

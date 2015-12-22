@@ -1,4 +1,4 @@
-typedef enum { typeCon, typeCha, typeId, typeOpr } nodeEnum;
+typedef enum { typeCon, typeCha, typeString, typeId, typeArray, typeDim, typeOpr } nodeEnum;
 
 /* constants */
 typedef struct {
@@ -9,10 +9,39 @@ typedef struct {
     int value;
 } chaNodeType;
 
+// added on 20th: STRING
+typedef struct {
+    char* value;
+} strgNodeType;
+
+typedef struct constTag
+{
+    nodeEnum type;
+
+    union {
+        conNodeType con;        /* constants */
+        chaNodeType cha;       /* charactors */
+        strgNodeType strg;
+    };
+} nodeConst;
+
 /* identifiers */
 typedef struct {
     char* id;                      /* subscript to sym array */
+    int offset;
 } idNodeType;
+
+/* node type for recording the dimension of array */
+// typedef struct {
+//     vector<int> dims;
+// } dimNodeType;
+
+typedef struct {
+    char* id;
+    int base;
+    int ndim;
+    // std::vector<int> dims;
+} arrayNodeType;
 
 /* operators */
 typedef struct {
@@ -29,7 +58,9 @@ typedef struct nodeTypeTag {
     union {
         conNodeType con;        /* constants */
         chaNodeType cha;       /* charactors */
+        strgNodeType strg;
         idNodeType id;          /* identifiers */
+        arrayNodeType array;
         oprNodeType opr;        /* operators */
     };
 } nodeType;
