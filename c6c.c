@@ -4,6 +4,8 @@
 #include "y.tab.h"
 #include <stdlib.h>
 //typedef enum {INTEGER,CHAR,STRING} printype;
+int ex(nodeType*);
+extern nodeType* opr(int oper, int nops, ...) ;
 static int lbl;
 static int fpoffset = 0;
 static struct dic *head=NULL;
@@ -126,19 +128,166 @@ struct dic* findVar(char* var,struct dic* thead)
         return addVar2Point(var,&head);
     }
 }
+void parsegeti(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("geti cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(READ,1,p));
+    }
+    else
+    {
+        parsegeti(p->opr.op[0]);
+        ex(opr(READ,1,p->opr.op[1]));
+    }
+}
+void parsegetc(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("getc cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(READC,1,p));
+    }
+    else
+    {
+        parsegetc(p->opr.op[0]);
+        ex(opr(READC,1,p->opr.op[1]));
+    }
+}
+void parseputi(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("puti cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(PI,1,p));
+    }
+    else
+    {
+        parseputi(p->opr.op[0]);
+        ex(opr(PI,1,p->opr.op[1]));
+    }
+}
+void parseputin(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("puti_ cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(PIN,1,p));
+    }
+    else
+    {
+        parseputin(p->opr.op[0]);
+        ex(opr(PIN,1,p->opr.op[1]));
+    }
+}
+void parseputifm(nodeType *p1,nodeType *p2)
+{
+    if(p2==NULL)
+    {
+        printf("puti cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p2->type==typeId)
+    {
+        ex(opr(PI,2,p1,p2));
+    }
+    else
+    {
+        parseputifm(p1,p2->opr.op[0]);
+        ex(opr(PI,2,p1,p2->opr.op[1]));
+    }
+}
+void parseputc(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("putc cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(PC,1,p));
+    }
+    else
+    {
+        parseputc(p->opr.op[0]);
+        ex(opr(PC,1,p->opr.op[1]));
+    }
+}
+void parseputcn(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("putc_ cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId)
+    {
+        ex(opr(PCN,1,p));
+    }
+    else
+    {
+        parseputcn(p->opr.op[0]);
+        ex(opr(PCN,1,p->opr.op[1]));
+    }
+}
+void parseputcfm(nodeType *p1,nodeType *p2)
+{
+    if(p2==NULL)
+    {
+        printf("putc cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p2->type==typeId)
+    {
+        ex(opr(PC,2,p1,p2));
+    }
+    else
+    {
+        parseputcfm(p1,p2->opr.op[0]);
+        ex(opr(PC,2,p1,p2->opr.op[1]));
+    }
+}
 int addPara(nodeType *p)
 {
     int num=0;
     if(p->type==typeOpr)
     {
         num+=addPara(p->opr.op[0]);
-        findVar(p->opr.op[1]->id.id,head);
+        if(p->opr.op[1]->type==typeId)
+            findVar(p->opr.op[1]->id.id,head);
+        else
+        {
+            printf("the argument list must be the variables only.\n");
+            exit(1);
+        }
+        ++num;
+    }
+    else if(p->type==typeId)
+    {
+        findVar(p->id.id,head);
         ++num;
     }
     else
     {
-        findVar(p->id.id,head);
-        ++num;
+        printf("the argument list must be the variables only.\n");
+        exit(1);
     }
     return num;
 
@@ -162,7 +311,7 @@ int ex(nodeType *p) {
         // printf("---typeCha---\n");
         printf("\tpush\t%d\n", p->cha.value);
         ischar = 1;
-        ++fpoffset;
+        ++fpoffset;//sad
         break;
     case typeId:
         // printf("---typeId:%s---\n",p->id.id);
@@ -253,6 +402,30 @@ int ex(nodeType *p) {
             outx = oldx;
             outy = oldy;
             break;
+        case GETI:
+            parsegeti(p->opr.op[0]);
+            break;
+        case GETC:
+            parsegetc(p->opr.op[0]);
+            break;
+        case PUTIN:
+            parseputin(p->opr.op[0]);
+            break;
+        case PUTI:
+            if(p->opr.nops==1)
+                parseputi(p->opr.op[0]);
+            else
+                parseputifm(p->opr.op[0],p->opr.op[1]);
+            break;
+        case PUTCN:
+            parseputc(p->opr.op[0]);
+            break;
+        case PUTC:
+            if(p->opr.nops==1)
+                parseputc(p->opr.op[0]);
+            else
+                parseputcfm(p->opr.op[0],p->opr.op[1]);
+            break;
         case IF:
             ex(p->opr.op[0]);
             if (p->opr.nops > 2) {
@@ -282,6 +455,7 @@ int ex(nodeType *p) {
                 tmp = findVar(p->opr.op[0]->id.id,NULL);
             else
                 tmp = findVar(p->opr.op[0]->id.id,head);
+            tmp->ischar = 0;
             if(!flag)
             {
                 printf("\tgeti\n");
@@ -295,7 +469,7 @@ int ex(nodeType *p) {
                 printf("\tpush 0\n");
                 ++fpoffset;
                 ++tmp->pos;
-                ex(p->opr.op[0]);
+                //ex(p->opr.op[0]);
                 printf("\tgeti\n");
                 if(p->opr.op[0]->id.global)
                     tmp = findVar(p->opr.op[0]->id.id,NULL);
@@ -307,12 +481,76 @@ int ex(nodeType *p) {
                     printf("\tpop\tsb[%d]\n",tmp->pos);
             }
     	    break;
+        case READC:
+            flag = 0;
+            if(p->opr.op[0]->id.global)
+                tmp = findVar(p->opr.op[0]->id.id,NULL);
+            else
+                tmp = findVar(p->opr.op[0]->id.id,head);
+            tmp->ischar = 1;
+            if(!flag)
+            {
+                printf("\tgetc\n");
+                if(!isg)
+                    printf("\tpop\tfp[%d]\n",tmp->pos);
+                else
+                    printf("\tpop\tsb[%d]\n",tmp->pos);
+            }
+            else
+            {
+                printf("\tpush 0\n");
+                ++fpoffset;
+                ++tmp->pos;
+                //ex(p->opr.op[0]);
+                printf("\tgetc\n");
+                if(p->opr.op[0]->id.global)
+                    tmp = findVar(p->opr.op[0]->id.id,NULL);
+                else
+                    tmp = findVar(p->opr.op[0]->id.id,head);
+                if(!isg)
+                    printf("\tpop\tfp[%d]\n",tmp->pos);
+                else
+                    printf("\tpop\tsb[%d]\n",tmp->pos);
+            }
+            break;   
         case PRINT:     
             ex(p->opr.op[0]);
             --fpoffset;
             if (ischar) printf("\tputc\n");
             else printf("\tputi\n");
             ischar = 1;
+            break;
+        case PI:
+            if(p->opr.nops==1)
+                ex(p->opr.op[0]);
+            else
+                ex(p->opr.op[1]);
+            --fpoffset;
+            if(p->opr.nops==1)
+                printf("\tputi\n");
+            else
+                printf("\tputi %s\n",p->opr.op[0]->id.id);
+            break;
+        case PIN:
+            ex(p->opr.op[0]);
+            --fpoffset;
+            printf("\tputi_\n");
+            break;
+        case PC:
+            if(p->opr.nops==1)
+                ex(p->opr.op[0]);
+            else
+                ex(p->opr.op[1]);
+            --fpoffset;
+            if(p->opr.nops==1)
+                printf("\tputc\n");
+            else
+                printf("\tputc %s\n",p->opr.op[0]->id.id);
+            break;
+        case PCN:
+            ex(p->opr.op[0]);
+            --fpoffset;
+            printf("\tputc_\n");
             break;
         case '=':       
             ex(p->opr.op[1]);
@@ -397,6 +635,7 @@ int ex(nodeType *p) {
             ex(p->opr.op[2]);
             printf("L%03d:\n",lbl1);
             outest = oldoutest;
+            head = oldhead;
             fpoffset = oldoff;
             break;
         case UMINUS:    

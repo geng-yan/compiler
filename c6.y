@@ -21,13 +21,14 @@ int sym[26];                    /* symbol table */
 
 %union {
     int iValue;                 /* integer value */
-    char* sIndex;                /* symbol table index */
+    char* sValue;                /* symbol table index */
     nodeType *nPtr;             /* node pointer */
 };
 
 %token <iValue> INTEGER CHAR
-%token <sIndex> VARIABLE GLOBAL
-%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN
+%token <sValue> VARIABLE GLOBAL STRING
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN GETI GETC GETS READC PUTC PUTCN PUTI PUTIN
+%token PI PIN PC PCN
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -38,7 +39,7 @@ int sym[26];                    /* symbol table */
 %left '*' '/' '%'
 %nonassoc UMINUS
 
-%type <nPtr> stmt expr stmt_list expr_list
+%type <nPtr> stmt expr stmt_list expr_list var_list
 
 %%
 
@@ -54,7 +55,15 @@ function:
 stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
         | expr ';'                       { $$ = $1; }
+        | GETI '(' var_list ')' ';'      { $$ = opr(GETI,1,$3);}
+        | GETC '(' var_list ')' ';'      { $$ = opr(GETC,1,$3);}
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
+        | PUTI '(' var_list ')' ';'      { $$ = opr(PUTI,1,$3);}
+        | PUTIN '(' var_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
+        | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,id($3),$5);}
+        | PUTC '(' var_list ')' ';'      { $$ = opr(PUTC,1,$3);}
+        | PUTCN '(' var_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
+        | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,id($3),$5);}
         | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
@@ -100,6 +109,11 @@ expr:
 expr_list:
           expr_list ',' expr {$$ = opr(',',2,$1,$3);}
         | expr {$$ = $1;}
+        | {$$ = NULL;}
+        ;
+var_list:
+          VARIABLE              {$$ = id($1);}
+        | var_list ',' VARIABLE {$$ = opr(',',2,$1,id($3));}
         | {$$ = NULL;}
         ;
 %%

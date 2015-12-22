@@ -14,6 +14,13 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 
 %%
 "for"       return FOR;
+"geti"      return GETI;
+"getc"      return GETC;
+"gets"      return GETS;
+"puti"      return PUTI;
+"puti_"     return PUTIN;
+"putc"      return PUTC;
+"putc_"     return PUTCN;
 "do"        return DO;
 "return"    return RETURN;
 "while"         return WHILE;
@@ -27,11 +34,11 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "||"        return OR;
 
 {VAR}       { 
-                yylval.sIndex = tolowercase(strdup(yytext));
+                yylval.sValue = tolowercase(strdup(yytext));
                 return VARIABLE;
             }
 @{VAR}      {
-                yylval.sIndex = tolowercase(strdup(++yytext));
+                yylval.sValue = tolowercase(strdup(++yytext));
                 return GLOBAL;
             }
 0           {
@@ -44,11 +51,12 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 return INTEGER;
             }
 
-\'[A-Za-z]\'    {
+\'.\'    {
                     yylval.iValue = (int)(yytext[1]);
                     return CHAR;
                 }
-
+\".*\"      { yylval.sValue = strdup(yytext);
+                    return STRING;}
 [-()<>=+*/;{}.%,] {
                 return *yytext;
              }

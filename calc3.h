@@ -14,7 +14,6 @@ typedef struct {
     char* id;                      /* subscript to sym array */
     int global;
 } idNodeType;
-
 /* operators */
 typedef struct {
     int oper;                   /* operator */
