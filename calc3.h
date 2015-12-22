@@ -28,20 +28,8 @@ typedef struct constTag
 /* identifiers */
 typedef struct {
     char* id;                      /* subscript to sym array */
-    int offset;
+    int global;
 } idNodeType;
-
-/* node type for recording the dimension of array */
-// typedef struct {
-//     vector<int> dims;
-// } dimNodeType;
-
-typedef struct {
-    char* id;
-    int base;
-    int ndim;
-    // std::vector<int> dims;
-} arrayNodeType;
 
 /* operators */
 typedef struct {
