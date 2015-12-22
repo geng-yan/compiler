@@ -9,6 +9,7 @@
 /* prototypes */
 nodeType *opr(int oper, int nops, ...);
 nodeType *id(char* var);
+nodeType *gl(char* var);
 nodeType *con(int value);
 nodeType *cha(int value);
 void freeNode(nodeType *p);
@@ -25,8 +26,8 @@ int sym[26];                    /* symbol table */
 };
 
 %token <iValue> INTEGER CHAR
-%token <sIndex> VARIABLE
-%token FOR WHILE IF PRINT READ DO BREAK CONTINUE
+%token <sIndex> VARIABLE GLOBAL
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -37,7 +38,7 @@ int sym[26];                    /* symbol table */
 %left '*' '/' '%'
 %nonassoc UMINUS
 
-%type <nPtr> stmt expr stmt_list
+%type <nPtr> stmt expr stmt_list expr_list
 
 %%
 
@@ -54,6 +55,7 @@ stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
         | expr ';'                       { $$ = $1; }
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
+        | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
 	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
@@ -65,6 +67,7 @@ $5, $7); }
         | IF '(' expr ')' stmt %prec IFX { $$ = opr(IF, 2, $3, $5); }
         | IF '(' expr ')' stmt ELSE stmt { $$ = opr(IF, 3, $3, $5, $7); }
         | '{' stmt_list '}'              { $$ = $2; }
+        | VARIABLE '(' expr_list ')' '{' stmt_list '}' {$$ = opr(FUNDCLR,3,id($1),$3,$6);}
         ;
 stmt_list:
           stmt                  { $$ = $1; }
@@ -74,7 +77,9 @@ stmt_list:
 expr:
           INTEGER               { $$ = con($1);  }
         | VARIABLE              { $$ = id($1); }
+        | GLOBAL                { $$ = gl($1); }
         | CHAR                  { $$ = cha($1);  }
+        | VARIABLE '(' expr_list ')' {$$ = opr(FUNCALL,2,id($1),$3);}
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
         | expr '+' expr         { $$ = opr('+', 2, $1, $3); }
         | expr '-' expr         { $$ = opr('-', 2, $1, $3); }
@@ -92,6 +97,11 @@ expr:
         | '(' expr ')'          { $$ = $2; }
         ;
 
+expr_list:
+          expr_list ',' expr {$$ = opr(',',2,$1,$3);}
+        | expr {$$ = $1;}
+        | {$$ = NULL;}
+        ;
 %%
 
 #define SIZEOF_NODETYPE ((char *)&p->con - (char *)p)
@@ -140,7 +150,22 @@ nodeType *id(char* var) {
     /* copy information */
     p->type = typeId;
     p->id.id = strdup(var);
+    p->id.global = 0;
+    return p;
+}
+nodeType *gl(char* var) {
+    nodeType *p;
+    size_t nodeSize;
 
+    /* allocate node */
+    nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeId;
+    p->id.id = strdup(var);
+    p->id.global = 1;
     return p;
 }
 

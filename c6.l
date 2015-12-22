@@ -15,6 +15,7 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 %%
 "for"       return FOR;
 "do"        return DO;
+"return"    return RETURN;
 "while"         return WHILE;
 "if"            return IF;
 "else"          return ELSE;
@@ -29,7 +30,10 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 yylval.sIndex = tolowercase(strdup(yytext));
                 return VARIABLE;
             }
-
+@{VAR}      {
+                yylval.sIndex = tolowercase(strdup(++yytext));
+                return GLOBAL;
+            }
 0           {
                 yylval.iValue = atoi(yytext);
                 return INTEGER;
@@ -45,7 +49,7 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                     return CHAR;
                 }
 
-[-()<>=+*/;{}.%] {
+[-()<>=+*/;{}.%,] {
                 return *yytext;
              }
 
@@ -59,7 +63,7 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 
 [ \t\n]+        ;       /* ignore whitespace */
 
-.               yyerror("Unknown character");
+.               {yyerror(yytext);}
 %%
 int yywrap(void) {
     return 1;

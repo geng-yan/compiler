@@ -12,6 +12,7 @@ typedef struct {
 /* identifiers */
 typedef struct {
     char* id;                      /* subscript to sym array */
+    int global;
 } idNodeType;
 
 /* operators */
