@@ -22,6 +22,8 @@ int outest = 1;
 int isg = 0;
 int canadd = 0;
 int para = 0;
+nodeType *vartmp = NULL;
+int isArray = 0;
 extern int yylineno;
 //printype typ;
 struct dic{
@@ -34,9 +36,10 @@ struct dic{
 
 struct arrayDic{
     char* name;
-    struct width *dims;
+    //struct width *dims;
+    int *dims;
+    int nDim;
     int type;
-    // struct arrayDic *next;
 };
 
 struct width{
@@ -56,16 +59,6 @@ struct fun* addFun(char* name)
     static struct fun *tail = NULL;
     if(fhead == NULL)
     {
-// <<<<<<< HEAD
-//         head = (struct dic*)malloc(sizeof(struct dic));
-//         head->name = strdup(var);
-//         head->pos = fpoffset-1;
-//         head->ischar = 0;
-//         head->next = NULL;
-//         head->t = INT;
-//         tail = head;
-//         return head;
-// =======
         fhead = (struct fun*)malloc(sizeof(struct fun));
         fhead->name = strdup(name);
         fhead->para_num = 0;
@@ -73,7 +66,6 @@ struct fun* addFun(char* name)
         fhead->next = NULL;
         tail = fhead;
         return fhead;
-// >>>>>>> clara
     }
     else
     {
@@ -107,6 +99,7 @@ struct dic* addVar2Point(char* var,struct dic** thead)
         (*thead)->name = strdup(var);
         (*thead)->pos = fpoffset-1;
         (*thead)->ischar = 0;
+        (*thead)->ref = NULL;
         (*thead)->next = NULL;
         return (*thead);
     }
@@ -340,7 +333,7 @@ void parseputsn(nodeType *p)
         printf("puts_ cannot receive NULL\n");
         exit(1);
     }
-    else if(p->type==typeId | p->type==typeString)
+    else if(p->type==typeId || p->type==typeString)
     {
         ex(opr(PSN,1,p));
     }
@@ -382,37 +375,55 @@ int addPara(nodeType *p)
 
 }
 
-struct arrayDic* newArray(char* name, int init, int type, struct width *dims){
+// struct arrayDic* newArray(char* name, int init, int type, struct width *dims){
+struct arrayDic* newArray(char* name, int init, int type, nodeType *dims){
     struct arrayDic *tmp = (struct arrayDic*)malloc(sizeof(struct arrayDic));
     tmp->name = strdup(name);
-    tmp->dims = dims;
+    tmp->nDim = dims->opr.nops;
+    tmp->dims = (int*)malloc(tmp->nDim * sizeof(int));
+    int i;
+    int cnt = 1;
+    for(i=0; i<tmp->nDim; i++){
+        tmp->dims[i] = dims->opr.op[i]->con.value;
+        cnt *= tmp->dims[i];
+    }
     tmp->type = type;
-    int i = 0;
 
     fpoffset--;
-    while (i<calcTotal(tmp->dims)){
+    //while (i<calcTotal(tmp->dims)){
+    //printf("array size: %d\n", cnt);
+    for(i=0; i<cnt; i++){
         printf("\tpush\t%d\n", init);
-        i++;
         ++fpoffset;
     }
     return tmp;
 }
 
-struct width* getDims(nodeType *p){
-    struct width *head = (struct width*)malloc(sizeof(struct width));
-    struct width *trailing;
-    head->bound = p->con.value;
-    switch(p->type){
-        case typeCon:
-            head->next = NULL;
-            break;
-        case typeOpr:
-            trailing = getDims(p->opr.op[0]);
-            head->next = trailing;
-            break;
-    }
-    return head;
-}
+// struct width* getDims(nodeType *p){
+//     struct width *head = (struct width*)malloc(sizeof(struct width));
+//     struct width *trailing;
+//     head->bound = p->con.value;
+//     switch(p->type){
+//         case typeCon:
+//             head->next = NULL;
+//             break;
+//         case typeOpr:
+//             trailing = getDims(p->opr.op[0]);
+//             head->next = trailing;
+//             break;
+//     }
+//     return head;
+// }
+// int* getDims(nodeType *p){
+//     int *dimHead = (int*) malloc(sizeof(int));
+//     switch(p->type){
+//         case typeCon:
+//             &dimHead = p->con.value;
+//             break;
+//         case typeOpr:
+//             &dimHead = p->opr.op[0]->con.value;
+//             f
+//     }
 
 int calcOff(struct width *dims, struct width *actual){
     struct width *currDim = dims;
@@ -423,6 +434,7 @@ int calcOff(struct width *dims, struct width *actual){
             printf("Array Dimension Error\n");
             exit(-1);
         }
+        
     }
 }
 
@@ -632,15 +644,18 @@ int ex(nodeType *p) {
             // int dim = p->opr.op[1]->con.value;
             if(p->opr.nops == 2){ // without initialization
                 // default init value is 0; "type" is 0: the type is not determined yet
-                tmp->ref = newArray(p->opr.op[0]->id.id, 0, 0, getDims(p->opr.op[1]));
+                //tmp->ref = newArray(p->opr.op[0]->id.id, 0, 0, getDims(p->opr.op[1]));
+                tmp->ref = newArray(p->opr.op[0]->id.id, 0, 0, p->opr.op[1]);
             }
             else{ // with initialization
                 switch(p->opr.op[3]->con.value){
                     case 1: // integer array
-                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 1, getDims(p->opr.op[1]));
+                        //tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 1, getDims(p->opr.op[1]));
+                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 1, p->opr.op[1]);
                         break;
                     case 2: // char array, i.e. "real string"
-                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->cha.value, 2, getDims(p->opr.op[1]));
+                        // tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->cha.value, 2, getDims(p->opr.op[1]));
+                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 2, p->opr.op[1]);
                         break;
                 }
             }        
@@ -822,9 +837,9 @@ int ex(nodeType *p) {
             printf("\tputs_\n");
             break;
         case '=':       
-            ex(p->opr.op[1]); // RHS value
-            nodeType *vartmp;
-            int isArray;
+            //ex(p->opr.op[1]); // RHS value
+            //nodeType *vartmp;
+            //int isArray;
             if (p->opr.op[0]->type == typeId){
                 vartmp = p->opr.op[0];  // simple variable
                 isArray = 0;
@@ -851,6 +866,8 @@ int ex(nodeType *p) {
                 }
                 else
                 {
+                    printf("\tpush\t0\n");
+                    ++fpoffset;
                     if(outest)
                         tmp = addVar2Point(vartmp->id.id, &global);
                     else
@@ -863,7 +880,8 @@ int ex(nodeType *p) {
                 tmp->ischar = ischar; // Disable and exit if type change is not allowed.
             }
             else{
-                ex(p->opr.op[1]);
+                //ex(p->opr.op[1]);
+                //printf("\tpush\t0\n");
                 --fpoffset;
                 tmp->ischar = ischar;
                 if(vartmp->id.global)
@@ -871,7 +889,8 @@ int ex(nodeType *p) {
                 else
                     tmp = findVar(vartmp->id.id, head);
             }
-            if(isArray == 0){
+            ex(p->opr.op[1]); // RHS value
+            if(isArray == 0){ // simple variable
                 if(tmp->ref != NULL){
                     printf("TYPE ERROR: cannot assign an array\n");
                     exit(1);
@@ -881,7 +900,7 @@ int ex(nodeType *p) {
                 else
                     printf("\tpop\tsb[%d]\n",tmp->pos);
             }
-            else{
+            else{ // array element
                 if (tmp->ref == NULL){
                     printf("TYPE ERROR: %s is not an array\n", tmp->name);
                     exit(1);
