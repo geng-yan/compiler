@@ -469,7 +469,10 @@ int ex(nodeType *p) {
                 }
                 else
                 {
-                    tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                    if(!outest)
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                    else
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&global);
                 }
             }
             tmp->ischar = 0;
@@ -513,7 +516,10 @@ int ex(nodeType *p) {
                 }
                 else
                 {
-                    tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                    if(!outest)
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&head);
+                    else
+                        tmp = addVar2Point(p->opr.op[0]->id.id,&global);
                 }
             }
             tmp->ischar = 1;
