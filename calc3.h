@@ -1,4 +1,4 @@
-typedef enum { typeCon, typeCha, typeId, typeOpr } nodeEnum;
+typedef enum { typeCon, typeCha, typeString, typeId, typeDim, typeOpr } nodeEnum;
 
 /* constants */
 typedef struct {
@@ -9,10 +9,26 @@ typedef struct {
     int value;
 } chaNodeType;
 
+// added on 20th: STRING
+typedef struct {
+    char* value;
+} strgNodeType;
+
+typedef struct constTag
+{
+    nodeEnum type;
+
+    union {
+        conNodeType con;        /* constants */
+        chaNodeType cha;       /* charactors */
+        strgNodeType strg;
+    };
+} nodeConst;
+
 /* identifiers */
 typedef struct {
     char* id;                      /* subscript to sym array */
-    int offset; // added: for array indexing
+    int global;
 } idNodeType;
 
 /* operators */
@@ -30,6 +46,7 @@ typedef struct nodeTypeTag {
     union {
         conNodeType con;        /* constants */
         chaNodeType cha;       /* charactors */
+        strgNodeType strg;
         idNodeType id;          /* identifiers */
         oprNodeType opr;        /* operators */
     };

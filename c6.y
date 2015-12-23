@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+// #include <vector>
 #include "calc3.h"
-
 
 /* prototypes */
 nodeType *opr(int oper, int nops, ...);
 nodeType *id(char* var);
+nodeType *gl(char* var);
 nodeType *con(int value);
 nodeType *cha(int value);
 void freeNode(nodeType *p);
@@ -20,13 +21,14 @@ int sym[26];                    /* symbol table */
 
 %union {
     int iValue;                 /* integer value */
-    char* sIndex;                /* symbol table index */
+    char* sValue;                /* symbol table index & nas string value */
     nodeType *nPtr;             /* node pointer */
 };
 
 %token <iValue> INTEGER CHAR
-%token <sIndex> VARIABLE
-%token FOR WHILE IF PRINT READ DO BREAK CONTINUE
+%token <sValue> VARIABLE GLOBAL STRING
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN GETI GETC GETS READC PUTC PUTCN PUTI PUTIN
+%token PI PIN PC PCN ARRAY ACCESS
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -37,7 +39,7 @@ int sym[26];                    /* symbol table */
 %left '*' '/' '%'
 %nonassoc UMINUS
 
-%type <nPtr> stmt expr stmt_list
+%type <nPtr> stmt expr stmt_list name_list single dims access expr_list var_list
 
 %%
 
@@ -53,40 +55,59 @@ function:
 stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
         | expr ';'                       { $$ = $1; }
+        | GETI '(' var_list ')' ';'      { $$ = opr(GETI,1,$3);}
+        | GETC '(' var_list ')' ';'      { $$ = opr(GETC,1,$3);}
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
+        | PUTI '(' var_list ')' ';'      { $$ = opr(PUTI,1,$3);}
+        | PUTIN '(' var_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
+        | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,id($3),$5);}
+        | PUTC '(' var_list ')' ';'      { $$ = opr(PUTC,1,$3);}
+        | PUTCN '(' var_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
+        | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,id($3),$5);}
+        | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
-	| READ var ';'		 { $$ = opr(READ, 1, id($2)); }
-        | var '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
-	| FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4,
-$5, $7); }
+    	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
+        | VARIABLE '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
+        | access '=' expr ';'            { $$ = opr('=', 2, $1, $3); }
+        | ARRAY name_list ';'                { $$ = $2; }
+	    | FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4, $5, $7); }
         | WHILE '(' expr ')' stmt        { $$ = opr(WHILE, 2, $3, $5); }
         | DO stmt WHILE '(' expr ')'     { $$ = opr(DO,2,$2,$5); }
         | IF '(' expr ')' stmt %prec IFX { $$ = opr(IF, 2, $3, $5); }
         | IF '(' expr ')' stmt ELSE stmt { $$ = opr(IF, 3, $3, $5, $7); }
-        | ARRAY array_list ';' { $$ = opr(ARRAY, 2, $2, $4); }
-        | '{' stmt_list '}'             { $$ = $2; }
+        | '{' stmt_list '}'              { $$ = $2; }
+        | VARIABLE '(' expr_list ')' '{' stmt_list '}' {$$ = opr(FUNDCLR,3,id($1),$3,$6);}
         ;
+
 stmt_list:
           stmt                  { $$ = $1; }
         | stmt_list stmt        { $$ = opr(';', 2, $1, $2); }
         ;
 
-array_list:
-        | array_list ',' single_array { $$ = opr(',', 2, $1, $2); }
-        | single_array { $$ = $1; }
+name_list:
+          single                        { $$ = $1; }
+        | name_list ',' single          { $$ = opr(',', 2, $1, $3); }
 
-single_array:
-        | VARIABLE '[' INTEGER ']' { $$ = opr(ARRAY, 2, $1, $3); }
-        | VARIABLE '[' INTEGER ']' '=' expr { $$ = opr(ARRAY, 3, $1, $3, $6); }
+single:
+          VARIABLE '[' dims ']'     { $$ = opr(ARRAY, 2, id($1), $3); }
+        | VARIABLE '[' dims ']' '=' INTEGER { $$ = opr(ARRAY, 4, id($1), $3, con($6), con(1)); }
+        | VARIABLE '[' dims ']' '=' CHAR    { $$ = opr(ARRAY, 4, id($1), $3, cha($6), con(2)); }
 
-var:
-        | VARIABLE              { $$ = id($1, 0); }
-        | VARIABLE '[' expr ']' { $$ = id($1, $3); }
+dims:
+          INTEGER                     { $$ = con($1); }
+        | INTEGER ',' dims           { opr(',', 2, con($1), $3); }
+
+access:
+          VARIABLE '[' expr ']' { $$ = opr(ACCESS, 2, id($1), $3); }
 
 expr:
-          INTEGER               { $$ = con($1); }
-        | var                   { $$ = $1; }
+          INTEGER               { $$ = con($1);  }
+        | access                { $$ = $1; }
+        | VARIABLE              { $$ = id($1); }
+        | GLOBAL                { $$ = gl($1); }
+        | CHAR                  { $$ = cha($1);  }
+        | VARIABLE '(' expr_list ')' {$$ = opr(FUNCALL,2,id($1),$3);}
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
         | expr '+' expr         { $$ = opr('+', 2, $1, $3); }
         | expr '-' expr         { $$ = opr('-', 2, $1, $3); }
@@ -104,9 +125,20 @@ expr:
         | '(' expr ')'          { $$ = $2; }
         ;
 
+expr_list:
+          expr_list ',' expr {$$ = opr(',',2,$1,$3);}
+        | expr {$$ = $1;}
+        | {$$ = NULL;}
+        ;
+var_list:
+          VARIABLE              {$$ = id($1);}
+        | var_list ',' VARIABLE {$$ = opr(',',2,$1,id($3));}
+        | {$$ = NULL;}
+        ;
 %%
 
 #define SIZEOF_NODETYPE ((char *)&p->con - (char *)p)
+
 
 nodeType *con(int value) {
     nodeType *p;
@@ -124,10 +156,6 @@ nodeType *con(int value) {
     return p;
 }
 
-<<<<<<< HEAD
-// added "offset" for array
-nodeType *id(char* name, int offset) {
-=======
 nodeType *cha(int value) {
     nodeType *p;
     size_t nodeSize;
@@ -145,7 +173,6 @@ nodeType *cha(int value) {
 }
 
 nodeType *id(char* var) {
->>>>>>> da39276b324fb1df0cb1bcb280c3fb23e8ddefca
     nodeType *p;
     size_t nodeSize;
 
@@ -156,9 +183,24 @@ nodeType *id(char* var) {
 
     /* copy information */
     p->type = typeId;
-    p->id.id = strdup(name);
-    p->id.offset = offset;
+    p->id.id = strdup(var);
+    p->id.global = 0;
+    return p;
+}
 
+nodeType *gl(char* var) {
+    nodeType *p;
+    size_t nodeSize;
+
+    /* allocate node */
+    nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeId;
+    p->id.id = strdup(var);
+    p->id.global = 1;
     return p;
 }
 
