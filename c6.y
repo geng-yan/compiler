@@ -55,26 +55,26 @@ function:
 
 stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
-        | expr ';'                       { $$ = $1; }
-        | GETI '(' var_list ')' ';'      { $$ = opr(GETI,1,$3);}
-        | GETC '(' var_list ')' ';'      { $$ = opr(GETC,1,$3);}
+        | expr ';'                          { $$ = $1; }
+        | GETI '(' expr_list ')' ';'      { $$ = opr(GETI,1,$3);}
+        | GETC '(' expr_list ')' ';'      { $$ = opr(GETC,1,$3);}
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
-        | PUTI '(' var_list ')' ';'      { $$ = opr(PUTI,1,$3);}
-        | PUTIN '(' var_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
-        | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,strg($3),$5);}
-        | PUTC '(' var_list ')' ';'      { $$ = opr(PUTC,1,$3);}
-        | PUTCN '(' var_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
-        | PUTS '(' var_list ')' ';'      { $$ = opr(PUTS,1,$3);}
-        | PUTSN '(' var_list ')' ';'      { $$ = opr(PUTSN,1,$3);}
-        | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,strg($3),$5);}
+        | PUTI '(' expr_list ')' ';'      { $$ = opr(PUTI,1,$3);}
+        | PUTIN '(' expr_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
+        | PUTI '(' STRING ',' expr_list ')' ';' {$$ = opr(PUTI,2,strg($3),$5);}
+        | PUTC '(' expr_list ')' ';'      { $$ = opr(PUTC,1,$3);}
+        | PUTCN '(' expr_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
+        | PUTS '(' expr_list ')' ';'      { $$ = opr(PUTS,1,$3);}
+        | PUTSN '(' expr_list ')' ';'      { $$ = opr(PUTSN,1,$3);}
+        | PUTC '(' STRING ',' expr_list ')' ';' {$$ = opr(PUTC,2,strg($3),$5);}
         | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
-    	| READ VARIABLE ';'		 { $$ = opr(READ, 1, id($2)); }
+        | READ VARIABLE ';'      { $$ = opr(READ, 1, id($2)); }
         | VARIABLE '=' expr ';'          { $$ = opr('=', 2, id($1), $3); }
         | access '=' expr ';'            { $$ = opr('=', 2, $1, $3); }
         | ARRAY name_list ';'                { $$ = $2; }
-	    | FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4, $5, $7); }
+        | FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4, $5, $7); }
         | WHILE '(' expr ')' stmt        { $$ = opr(WHILE, 2, $3, $5); }
         | DO stmt WHILE '(' expr ')'     { $$ = opr(DO,2,$2,$5); }
         | IF '(' expr ')' stmt %prec IFX { $$ = opr(IF, 2, $3, $5); }
@@ -90,7 +90,7 @@ stmt_list:
 
 name_list:
           single                        { $$ = $1; }
-        | name_list ',' single          { $$ = opr(',', 2, $1, $3); }
+        | single ',' name_list          { $$ = opr(',', 3, $1, $3, id(0)); }
 
 single:
           VARIABLE '[' dims ']'     { $$ = opr(ARRAY, 2, id($1), $3); }
@@ -99,7 +99,7 @@ single:
 
 dims:
           INTEGER                     { $$ = con($1); }
-        | INTEGER ',' dims           { opr(',', 2, con($1), $3); }
+        | INTEGER ',' dims           { opr(',', 3, con($1), $3, id(0)); }
 
 access:
           VARIABLE '[' expr ']' { $$ = opr(ACCESS, 2, id($1), $3); }
@@ -130,13 +130,13 @@ expr:
         ;
 
 expr_list:
-          expr_list ',' expr {$$ = opr(',',2,$1,$3);}
+          expr_list ',' expr {$$ = opr(',',3,$1,$3, id(1));}
         | expr {$$ = $1;}
         | {$$ = NULL;}
         ;
 var_list:
-          expr              {$$ = $1;}
-        | var_list ',' expr {$$ = opr(',',2,$1,$3);}
+          VARIABLE              {$$ = $1;}
+        | var_list ',' VARIABLE {$$ = opr(',',3,$1,$3,id(1));}
         | {$$ = NULL;}
         ;
 %%
