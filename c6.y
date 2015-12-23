@@ -27,8 +27,8 @@ int sym[26];                    /* symbol table */
 
 %token <iValue> INTEGER CHAR
 %token <sValue> VARIABLE GLOBAL STRING
-%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN GETI GETC GETS READC PUTC PUTCN PUTI PUTIN
-%token PI PIN PC PCN ARRAY ACCESS
+%token FOR WHILE IF PRINT READ DO BREAK CONTINUE FUNCALL FUNDCLR RETURN GETI GETC GETS READC PUTC PUTCN PUTI PUTIN PUTS PUTSN
+%token PI PIN PC PCN PS PSN ARRAY ACCESS
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -63,6 +63,8 @@ stmt:
         | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,id($3),$5);}
         | PUTC '(' var_list ')' ';'      { $$ = opr(PUTC,1,$3);}
         | PUTCN '(' var_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
+        | PUTS '(' var_list ')' ';'      { $$ = opr(PUTS,1,$3);}
+        | PUTSN '(' var_list ')' ';'      { $$ = opr(PUTSN,1,$3);}
         | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,id($3),$5);}
         | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
@@ -131,8 +133,8 @@ expr_list:
         | {$$ = NULL;}
         ;
 var_list:
-          VARIABLE              {$$ = id($1);}
-        | var_list ',' VARIABLE {$$ = opr(',',2,$1,id($3));}
+          expr              {$$ = $1;}
+        | var_list ',' expr {$$ = opr(',',2,$1,$3);}
         | {$$ = NULL;}
         ;
 %%
