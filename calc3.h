@@ -1,4 +1,4 @@
-typedef enum { typeCon, typeCha, typeString, typeId, typeArray, typeDim, typeOpr } nodeEnum;
+typedef enum { typeCon, typeCha, typeString, typeId, typeDim, typeOpr } nodeEnum;
 
 /* constants */
 typedef struct {
@@ -48,7 +48,6 @@ typedef struct nodeTypeTag {
         chaNodeType cha;       /* charactors */
         strgNodeType strg;
         idNodeType id;          /* identifiers */
-        arrayNodeType array;
         oprNodeType opr;        /* operators */
     };
 } nodeType;

@@ -30,6 +30,7 @@ struct dic{
     struct arrayDic *ref;
     struct dic *next;
 };
+
 struct arrayDic{
     char* name;
     struct width *dims;
@@ -38,15 +39,17 @@ struct arrayDic{
 };
 
 struct width{
-    int dim;
+    int bound;
     struct width *next;
-}
+};
+
 struct fun{
     char *name;
     int no;
     int para_num;
     struct fun *next;
 };
+
 struct fun* addFun(char* name)
 {
     static struct fun *tail = NULL;
@@ -110,7 +113,7 @@ struct dic* addVar2Point(char* var,struct dic** thead)
     }
 }
 
-struct dic* findVar(char* var,struct dic* thead)
+struct dic* findVar(char* var, struct dic* thead)
 {
     struct dic *tmp;
     //printf("222\n");
@@ -324,13 +327,14 @@ struct arrayDic* newArray(char* name, int init, int type, nodeType *dims){
 
 struct width* getDims(nodeType *p){
     struct width *head = (struct width*)malloc(sizeof(struct width));
-    head->dim = p->con.value;
+    head->bound = p->con.value;
     switch(p->type){
         case typeCon:
             head->next = NULL;
             return ;
         case typeOpr:
-            struct width *tail = getDims(p->opr.op[0]);
+            struct width *tail;
+            tail = getDims(p->opr.op[0]);
             head->next = tail;
             break;
     }
@@ -338,7 +342,7 @@ struct width* getDims(nodeType *p){
 }
 
 int calcOff(struct width *dims, struct width *actual){
-    struct width *currDim, *currAct = *dims, *actual;
+    struct width *currDim, *currAct = dims, actual;
     int off = 0;
     while (*currDim->next != NULL){
         if (*currAct == NULL){
@@ -522,47 +526,38 @@ int ex(nodeType *p) {
             }
             break;
         case ARRAY: // array declaration; single dimension
-            if(p->opr.nops == 2){ // without initialization
-                flag = 0;
-                ++fpoffset;
-                tmp = findVar(p->opr.op[0]->id.id);
-                if(!flag){ // already declared
-                    printf("ERROR: duplicated array declaration: %s\n", p->opr.op[0]->id.id);
-                    // execution should stop here so the value of fp is no longer relevant
-                    exit(-1);
-                }
-                switch (p->opr.op[1]->type){
-                    case typeCon:
-                        int dim = p->opr.op[1]->con.value;
-                        break;
-                    case typeOpr:
-                        f
-                }
-                int dim = p->opr.op[1]->con.value;
-                // default init value is 0; "type" is 0: the type is not determined yet
-                tmp->ref = newArray(p->opr.op[0]->id.id, 0, 0, dim);
-                fpoffset += (dim-1); // reserve space for array
+            flag = 0;
+            ++fpoffset;
+            if(vartmp->id.global)
+                tmp = findVar(vartmp->id.id,NULL);
+            else
+                tmp = findVar(vartmp->id.id,head);
+            if (tmp != NULL){ // already declared
+                printf("ERROR: duplicated array declaration: %s\n", p->opr.op[0]->id.id);
+                // execution should stop here so the value of fp is no longer relevant
+                exit(-1);
             }
-            else{ // with initialization: name, dim, value, type
-                flag = 0;
-                ++fpoffset;
-                tmp = findVar(p->opr.op[0]->id.id);
-                if(!flag){ // already declared
-                    printf("ERROR: duplicated array declaration: %s\n", p->opr.op[0]->id.id);
-                    // execution should stop here so the value of fp is no longer relevant
-                    exit(-1);
-                }
-                int dim = p->opr.op[1]->con.value;
+            if(outest)
+                tmp = addVar2Point(p->opr.op[0]->id.id, &global);
+            else
+                tmp = addVar2Point(p->opr.op[0]->id.id, &head);
+            // int dim = p->opr.op[1]->con.value;
+            if(p->opr.nops == 2){ // without initialization
+                // default init value is 0; "type" is 0: the type is not determined yet
+                tmp->ref = newArray(p->opr.op[0]->id.id, 0, 0, getDims(p->opr.op[1]));
+            }
+            else{ // with initialization
                 switch(p->opr.op[3]->con.value){
                     case 1: // integer array
-                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 1, dim);
+                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->con.value, 1, getDims(p->opr.op[1]));
                         break;
                     case 2: // char array, i.e. "real string"
-                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->cha.value, 2, dim);
+                        tmp->ref = newArray(p->opr.op[0]->id.id, p->opr.op[2]->cha.value, 2, getDims(p->opr.op[1]));
                         break;
                 }
-                fpoffset += (dim-1); // reserve space for array
-            }
+            }        
+            //fpoffset += (dim-1); // reserve space for array
+            fpoffset += calcTotal(p->opr.op[1]) - 1;
             break;
         case ACCESS: // VARIABLE '[' expr ']'
             flag = 0;
@@ -745,7 +740,7 @@ int ex(nodeType *p) {
                  //var type changed. 
                 tmp->ischar = ischar; // Disable and exit if type change is not allowed.
             }
-            else{ // why do we search again?
+            else{
                 ex(p->opr.op[1]);
                 --fpoffset;
                 tmp->ischar = ischar;

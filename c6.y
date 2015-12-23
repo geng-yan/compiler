@@ -204,23 +204,6 @@ nodeType *gl(char* var) {
     return p;
 }
 
-// not used
-nodeType *array(char* var, int offset) {
-    nodeType *p;
-    size_t nodeSize;
-
-    /* allocate node */
-    nodeSize = SIZEOF_NODETYPE + sizeof(idNodeType);
-    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
-        yyerror("out of memory");
-
-    /* copy information */
-    p->type = typeArray;
-    p->id.id = strdup(var);
-
-    return p;
-}
-
 nodeType *opr(int oper, int nops, ...) {
     va_list ap;
     nodeType *p;
