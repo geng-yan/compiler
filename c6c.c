@@ -15,7 +15,7 @@ struct fun *fhead = NULL;
 struct dic *global=NULL;
 int outx=-1,outy=-1;
 int flag = 0;
-enum type{INT,ARRAY}; // not sure whether this is used
+// enum type{INT,ARRAY}; // not sure whether this is used
 int ischar = 1;
 int fnum = 0;
 int outest = 1;
@@ -119,7 +119,7 @@ struct dic* addVar2Point(char* var,struct dic** thead)
         tmp->ischar = 0;
         tmp->ref = NULL;
         tmp->next = NULL;
-        tmp->t = INT;
+        // tmp->t = INT;
         tail->next = tmp;
         tail = tmp;
         return tmp;
@@ -323,12 +323,13 @@ int addPara(nodeType *p)
 
 }
 
-struct arrayDic* newArray(char* name, int init, int type, nodeType *dims){
+struct arrayDic* newArray(char* name, int init, int type, struct width *dims){
     struct arrayDic *tmp = (struct arrayDic*)malloc(sizeof(struct arrayDic));
     tmp->name = strdup(name);
-    tmp->dims = getDims(dims);
+    tmp->dims = dims;
     tmp->type = type;
     int i = 0;
+
     fpoffset--;
     while (i<calcTotal(tmp->dims)){
         printf("\tpush\t%d\n", init);
@@ -340,25 +341,26 @@ struct arrayDic* newArray(char* name, int init, int type, nodeType *dims){
 
 struct width* getDims(nodeType *p){
     struct width *head = (struct width*)malloc(sizeof(struct width));
+    struct width *trailing;
     head->bound = p->con.value;
     switch(p->type){
         case typeCon:
             head->next = NULL;
-            return ;
+            break;
         case typeOpr:
-            struct width *tail;
-            tail = getDims(p->opr.op[0]);
-            head->next = tail;
+            trailing = getDims(p->opr.op[0]);
+            head->next = trailing;
             break;
     }
     return head;
 }
 
 int calcOff(struct width *dims, struct width *actual){
-    struct width *currDim, *currAct = dims, actual;
+    struct width *currDim = dims;
+    struct width *currAct = actual;
     int off = 0;
-    while (*currDim->next != NULL){
-        if (*currAct == NULL){
+    while (currDim->next != NULL){
+        if (currAct == NULL){
             printf("Array Dimension Error\n");
             exit(-1);
         }
@@ -369,7 +371,7 @@ int calcTotal(struct width *head){
     int prod = 1;
     struct width *curr = head;
     while (curr != NULL){
-        prod *= curr->dim;
+        prod *= curr->bound;
         curr = curr->next;
     }
     return prod;
@@ -541,10 +543,10 @@ int ex(nodeType *p) {
         case ARRAY: // array declaration; single dimension
             flag = 0;
             ++fpoffset;
-            if(vartmp->id.global)
-                tmp = findVar(vartmp->id.id,NULL);
+            if(p->opr.op[0]->id.global)
+                tmp = findVar(p->opr.op[0]->id.id,NULL);
             else
-                tmp = findVar(vartmp->id.id,head);
+                tmp = findVar(p->opr.op[0]->id.id,head);
             if (tmp != NULL){ // already declared
                 printf("ERROR: duplicated array declaration: %s\n", p->opr.op[0]->id.id);
                 // execution should stop here so the value of fp is no longer relevant
@@ -570,16 +572,24 @@ int ex(nodeType *p) {
                 }
             }        
             //fpoffset += (dim-1); // reserve space for array
-            fpoffset += calcTotal(p->opr.op[1]) - 1;
+            fpoffset += calcTotal(getDims(p->opr.op[1])) - 1;
             break;
         case ACCESS: // VARIABLE '[' expr ']'
             flag = 0;
-            tmp = findVar(p->opr.op[0]->id.id);
+            if(p->opr.op[0]->id.global)
+                tmp = findVar(p->opr.op[0]->id.id,NULL);
+            else
+                tmp = findVar(p->opr.op[0]->id.id,head);
+            if (tmp == NULL){
+                printf("ERROR: array element referenced before declaration.\n");
+                exit(1);
+            }
             ex(p->opr.op[1]);
             printf("\tpush\t%d\n", tmp->pos);
             printf("\tadd\n");
             printf("\tpop\tin\n");
             printf("\tpush\tfp[in]\n");
+            break;
             //printf("\tpush\tfp[%d]\n", tmp->pos + p->opr.op[1]->con.value);
         case RETURN:
             ex(p->opr.op[0]);
@@ -727,7 +737,7 @@ int ex(nodeType *p) {
                 isArray = 0;
             }
             else{
-                vartmp = p->opr.op[0]->op[0]; // array element
+                vartmp = p->opr.op[0]->opr.op[0]; // array element
                 isArray = 1;
             }
             // common
