@@ -56,8 +56,8 @@ function:
 stmt:
           ';'                            { $$ = opr(';', 2, NULL, NULL); }
         | expr ';'                          { $$ = $1; }
-        | GETI '(' expr_list ')' ';'      { $$ = opr(GETI,1,$3);}
-        | GETC '(' expr_list ')' ';'      { $$ = opr(GETC,1,$3);}
+        | GETI '(' var_list ')' ';'      { $$ = opr(GETI,1,$3);}
+        | GETC '(' var_list ')' ';'      { $$ = opr(GETC,1,$3);}
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
         | PUTI '(' expr_list ')' ';'      { $$ = opr(PUTI,1,$3);}
         | PUTIN '(' expr_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
@@ -90,7 +90,7 @@ stmt_list:
 
 name_list:
           single                        { $$ = $1; }
-        | single ',' name_list          { $$ = opr(',', 3, $1, $3, id(0)); }
+        | single ',' name_list          { $$ = opr(',', 3, $1, $3, con(0)); }
 
 single:
           VARIABLE '[' dims ']'     { $$ = opr(ARRAY, 2, id($1), $3); }
@@ -99,7 +99,7 @@ single:
 
 dims:
           INTEGER                     { $$ = con($1); }
-        | INTEGER ',' dims           { opr(',', 3, con($1), $3, id(0)); }
+        | INTEGER ',' dims           { opr(',', 3, con($1), $3, con(0)); }
 
 access:
           VARIABLE '[' expr ']' { $$ = opr(ACCESS, 2, id($1), $3); }
@@ -130,13 +130,13 @@ expr:
         ;
 
 expr_list:
-          expr_list ',' expr {$$ = opr(',',3,$1,$3, id(1));}
+          expr_list ',' expr {$$ = opr(',',3,$1, $3, con(1));}
         | expr {$$ = $1;}
         | {$$ = NULL;}
         ;
 var_list:
-          VARIABLE              {$$ = $1;}
-        | var_list ',' VARIABLE {$$ = opr(',',3,$1,$3,id(1));}
+          VARIABLE              {$$ = id($1);}
+        | var_list ',' VARIABLE {$$ = opr(',',3,$1,id($3), con(1));}
         | {$$ = NULL;}
         ;
 %%

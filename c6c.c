@@ -192,6 +192,7 @@ void parsegetc(nodeType *p)
         ex(opr(READC,1,p->opr.op[1]));
     }
 }
+// anchorPUTI
 void parseputi(nodeType *p)
 {
     if(p==NULL)
@@ -201,6 +202,9 @@ void parseputi(nodeType *p)
     }
     else if(p->type==typeId || p->type==typeCon)
     {
+        ex(opr(PI,1,p));
+    }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
         ex(opr(PI,1,p));
     }
     else
@@ -220,6 +224,9 @@ void parseputin(nodeType *p)
     {
         ex(opr(PIN,1,p));
     }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
+        ex(opr(PIN,1,p));
+    }
     else
     {
         parseputin(p->opr.op[0]);
@@ -237,6 +244,9 @@ void parseputifm(nodeType *p1, nodeType *p2)
     {
         ex(opr(PI,2,p1,p2));
     }
+    else if(p2->type==typeOpr && p2->opr.oper == ACCESS){
+        ex(opr(PI,2,p1, p2));
+    }
     else
     {
         parseputifm(p1,p2->opr.op[0]);
@@ -252,6 +262,9 @@ void parseputc(nodeType *p)
     }
     else if(p->type==typeId || p->type==typeCha)
     {
+        ex(opr(PC,1,p));
+    }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
         ex(opr(PC,1,p));
     }
     else
@@ -271,6 +284,9 @@ void parseputcn(nodeType *p)
     {
         ex(opr(PCN,1,p));
     }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
+        ex(opr(PCN,1,p));
+    }
     else
     {
         parseputcn(p->opr.op[0]);
@@ -286,6 +302,9 @@ void parseputcfm(nodeType *p1,nodeType *p2)
     }
     else if(p2->type==typeId || p2->type==typeCon)
     {
+        ex(opr(PC,2,p1,p2));
+    }
+    else if(p2->type==typeOpr && p2->opr.oper == ACCESS){
         ex(opr(PC,2,p1,p2));
     }
     else
@@ -305,6 +324,9 @@ void parseputs(nodeType *p)
     {
         ex(opr(PS,1,p));
     }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
+        ex(opr(PS,1,p));
+    }
     else
     {
         parseputs(p->opr.op[0]);
@@ -320,6 +342,9 @@ void parseputsn(nodeType *p)
     }
     else if(p->type==typeId | p->type==typeString)
     {
+        ex(opr(PSN,1,p));
+    }
+    else if(p->type==typeOpr && p->opr.oper == ACCESS){
         ex(opr(PSN,1,p));
     }
     else
@@ -619,8 +644,6 @@ int ex(nodeType *p) {
                         break;
                 }
             }        
-            //fpoffset += (dim-1); // reserve space for array
-            fpoffset += calcTotal(getDims(p->opr.op[1])) - 1;
             break;
         case ACCESS: // VARIABLE '[' expr ']'
             flag = 0;
@@ -636,7 +659,11 @@ int ex(nodeType *p) {
             printf("\tpush\t%d\n", tmp->pos);
             printf("\tadd\n");
             printf("\tpop\tin\n");
-            printf("\tpush\tfp[in]\n");
+            if(!isg)
+                printf("\tpush\tfp[in]\n");
+            else
+                printf("\tpush\tsb[in]\n");
+            // printf("\tpush\tfp[in]\n");
             break;
             //printf("\tpush\tfp[%d]\n", tmp->pos + p->opr.op[1]->con.value);
         case RETURN:
@@ -845,6 +872,10 @@ int ex(nodeType *p) {
                     tmp = findVar(vartmp->id.id, head);
             }
             if(isArray == 0){
+                if(tmp->ref != NULL){
+                    printf("TYPE ERROR: cannot assign an array\n");
+                    exit(1);
+                }
                 if(!isg)
                     printf("\tpop\tfp[%d]\n",tmp->pos);
                 else
@@ -853,7 +884,7 @@ int ex(nodeType *p) {
             else{
                 if (tmp->ref == NULL){
                     printf("TYPE ERROR: %s is not an array\n", tmp->name);
-                    exit(-1);
+                    exit(1);
                 }
                 ex(p->opr.op[0]->opr.op[1]);
                 printf("\tpush\t%d\n", tmp->pos);
@@ -870,7 +901,6 @@ int ex(nodeType *p) {
             ftmp = findFun(p->opr.op[0]->id.id);
             printf("\tcall L%03d,%d\n",ftmp->no,ftmp->para_num);
             break;
-
         case FUNDCLR:
             oldoutest = outest;
             outest = 0;
@@ -929,7 +959,7 @@ int ex(nodeType *p) {
             ex(p->opr.op[0]); // deleted: int aischar = ischar;
             ex(p->opr.op[1]); int charopr = ischar; ischar = 0;
                 switch(p->opr.oper) { 
-                case ',':   para++; break;
+                case ',':   if(p->opr.op[2]->con.value == 1) para++; break;
                 case '+':   printf("\tadd\n"); --fpoffset; break;
                 case '-':   printf("\tsub\n"); --fpoffset; break; 
                 case '*':   printf("\tmul\n"); --fpoffset;break;
