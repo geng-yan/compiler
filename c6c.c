@@ -199,7 +199,7 @@ void parseputi(nodeType *p)
         printf("puti cannot receive NULL\n");
         exit(1);
     }
-    else if(p->type==typeId)
+    else if(p->type==typeId || p->type==typeCon)
     {
         ex(opr(PI,1,p));
     }
@@ -216,7 +216,7 @@ void parseputin(nodeType *p)
         printf("puti_ cannot receive NULL\n");
         exit(1);
     }
-    else if(p->type==typeId)
+    else if(p->type==typeId || p->type==typeCon)
     {
         ex(opr(PIN,1,p));
     }
@@ -226,14 +226,14 @@ void parseputin(nodeType *p)
         ex(opr(PIN,1,p->opr.op[1]));
     }
 }
-void parseputifm(nodeType *p1,nodeType *p2)
+void parseputifm(nodeType *p1, nodeType *p2)
 {
     if(p2==NULL)
     {
         printf("puti cannot receive NULL\n");
         exit(1);
     }
-    else if(p2->type==typeId)
+    else if(p2->type==typeId || p2->type==typeCon)
     {
         ex(opr(PI,2,p1,p2));
     }
@@ -250,7 +250,7 @@ void parseputc(nodeType *p)
         printf("putc cannot receive NULL\n");
         exit(1);
     }
-    else if(p->type==typeId)
+    else if(p->type==typeId || p->type==typeCha)
     {
         ex(opr(PC,1,p));
     }
@@ -267,7 +267,7 @@ void parseputcn(nodeType *p)
         printf("putc_ cannot receive NULL\n");
         exit(1);
     }
-    else if(p->type==typeId)
+    else if(p->type==typeId || p->type==typeCha)
     {
         ex(opr(PCN,1,p));
     }
@@ -284,7 +284,7 @@ void parseputcfm(nodeType *p1,nodeType *p2)
         printf("putc cannot receive NULL\n");
         exit(1);
     }
-    else if(p2->type==typeId)
+    else if(p2->type==typeId || p2->type==typeCon)
     {
         ex(opr(PC,2,p1,p2));
     }
@@ -292,6 +292,40 @@ void parseputcfm(nodeType *p1,nodeType *p2)
     {
         parseputcfm(p1,p2->opr.op[0]);
         ex(opr(PC,2,p1,p2->opr.op[1]));
+    }
+}
+void parseputs(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("puts cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId || p->type==typeString)
+    {
+        ex(opr(PS,1,p));
+    }
+    else
+    {
+        parseputs(p->opr.op[0]);
+        ex(opr(PS,1,p->opr.op[1]));
+    }
+}
+void parseputsn(nodeType *p)
+{
+    if(p==NULL)
+    {
+        printf("puts_ cannot receive NULL\n");
+        exit(1);
+    }
+    else if(p->type==typeId | p->type==typeString)
+    {
+        ex(opr(PSN,1,p));
+    }
+    else
+    {
+        parseputsn(p->opr.op[0]);
+        ex(opr(PSN,1,p->opr.op[1]));
     }
 }
 int addPara(nodeType *p)
@@ -400,6 +434,10 @@ int ex(nodeType *p) {
         printf("\tpush\t%d\n", p->cha.value);
         ischar = 1;
         ++fpoffset;//sad
+        break;
+    case typeString:
+        printf("\tpush\t%s\n", p->strg.value);
+        ++fpoffset;
         break;
     case typeId:
         // printf("---typeId:%s---\n",p->id.id);
@@ -513,13 +551,23 @@ int ex(nodeType *p) {
                 parseputifm(p->opr.op[0],p->opr.op[1]);
             break;
         case PUTCN:
-            parseputc(p->opr.op[0]);
+            parseputcn(p->opr.op[0]);
             break;
         case PUTC:
             if(p->opr.nops==1)
                 parseputc(p->opr.op[0]);
             else
                 parseputcfm(p->opr.op[0],p->opr.op[1]);
+            break;
+        case PUTSN:
+            parseputsn(p->opr.op[0]);
+            break;
+        case PUTS:
+            if(p->opr.nops==1)
+                parseputs(p->opr.op[0]);
+            // TODO: formatted
+            // else
+            //     parseputcfm(p->opr.op[0],p->opr.op[1]);
             break;
         case IF:
             ex(p->opr.op[0]);
@@ -697,15 +745,15 @@ int ex(nodeType *p) {
             //ischar = 1;
             break;
         case PI:
-            if(p->opr.nops==1)
+            if(p->opr.nops==1) // simple
                 ex(p->opr.op[0]);
-            else
+            else // formatted
                 ex(p->opr.op[1]);
             --fpoffset;
             if(p->opr.nops==1)
                 printf("\tputi\n");
             else
-                printf("\tputi %s\n",p->opr.op[0]->id.id);
+                printf("\tputi %s\n",p->opr.op[0]->strg.value);
             break;
         case PIN:
             ex(p->opr.op[0]);
@@ -721,12 +769,30 @@ int ex(nodeType *p) {
             if(p->opr.nops==1)
                 printf("\tputc\n");
             else
-                printf("\tputc %s\n",p->opr.op[0]->id.id);
+                printf("\tputc %s\n",p->opr.op[0]->strg.value);
             break;
         case PCN:
             ex(p->opr.op[0]);
             --fpoffset;
             printf("\tputc_\n");
+            break;
+        // added
+        case PS:
+            if(p->opr.nops==1)
+                ex(p->opr.op[0]);
+            else
+                ex(p->opr.op[1]);
+            --fpoffset;
+            if(p->opr.nops==1)
+                printf("\tputs\n");
+            // TODO: formatted
+            // else
+            //     printf("\tputc %s\n",p->opr.op[0]->id.id);
+            break;
+        case PSN:
+            ex(p->opr.op[0]);
+            --fpoffset;
+            printf("\tputs_\n");
             break;
         case '=':       
             ex(p->opr.op[1]); // RHS value

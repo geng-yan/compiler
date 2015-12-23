@@ -12,6 +12,7 @@ nodeType *id(char* var);
 nodeType *gl(char* var);
 nodeType *con(int value);
 nodeType *cha(int value);
+nodeType *strg(char *value);
 void freeNode(nodeType *p);
 int ex(nodeType *p);
 int yylex(void);
@@ -60,12 +61,12 @@ stmt:
         | PRINT expr ';'                 { $$ = opr(PRINT, 1, $2); }
         | PUTI '(' var_list ')' ';'      { $$ = opr(PUTI,1,$3);}
         | PUTIN '(' var_list ')' ';'      { $$ = opr(PUTIN,1,$3);}
-        | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,id($3),$5);}
+        | PUTI '(' STRING ',' var_list ')' ';' {$$ = opr(PUTI,2,strg($3),$5);}
         | PUTC '(' var_list ')' ';'      { $$ = opr(PUTC,1,$3);}
         | PUTCN '(' var_list ')' ';'      { $$ = opr(PUTCN,1,$3);}
         | PUTS '(' var_list ')' ';'      { $$ = opr(PUTS,1,$3);}
         | PUTSN '(' var_list ')' ';'      { $$ = opr(PUTSN,1,$3);}
-        | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,id($3),$5);}
+        | PUTC '(' STRING ',' var_list ')' ';' {$$ = opr(PUTC,2,strg($3),$5);}
         | RETURN expr ';'                { $$ = opr(RETURN,1,$2); }
         | BREAK ';'                      { $$ = opr(BREAK,0);}
         | CONTINUE ';'                      { $$ = opr(CONTINUE,0);}
@@ -107,6 +108,7 @@ expr:
           INTEGER               { $$ = con($1);  }
         | access                { $$ = $1; }
         | VARIABLE              { $$ = id($1); }
+        | STRING                { $$ = strg($1); }
         | GLOBAL                { $$ = gl($1); }
         | CHAR                  { $$ = cha($1);  }
         | VARIABLE '(' expr_list ')' {$$ = opr(FUNCALL,2,id($1),$3);}
@@ -170,6 +172,23 @@ nodeType *cha(int value) {
     /* copy information */
     p->type = typeCha;
     p->con.value = value;
+
+    return p;
+}
+
+// added: for nas string
+nodeType *strg(char *value) {
+    nodeType *p;
+    size_t nodeSize;
+
+    /* allocate node */
+    nodeSize = (char *)&p->strg - (char *)p + sizeof(strgNodeType);
+    if ((p = (nodeType*) malloc(nodeSize)) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->type = typeString;
+    p->strg.value = value;
 
     return p;
 }

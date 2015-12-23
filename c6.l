@@ -20,6 +20,8 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
 "puti_"     return PUTIN;
 "putc"      return PUTC;
 "putc_"     return PUTCN;
+"puts"      return PUTS;
+"puts_"     return PUTSN;
 "do"        return DO;
 "return"    return RETURN;
 "while"         return WHILE;
@@ -59,7 +61,8 @@ VAR         [A-Za-z][A-Za-z0-9]{0,11}
                 }
 \".*\"      { yylval.sValue = strdup(yytext);
                     return STRING;}
-[-()<>=+*/;\[\]{}.%,] {
+                    
+[-\(\)<>=+*/;\[\]{}\.%,] {
                 return *yytext;
              }
 
